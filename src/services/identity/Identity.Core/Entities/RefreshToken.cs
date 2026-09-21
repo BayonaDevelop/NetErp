@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace Identity.Core.Entities;
+﻿namespace Identity.Core.Entities;
 
 public partial class RefreshToken
 {
@@ -20,4 +17,6 @@ public partial class RefreshToken
     public DateTime CreatedAt { get; set; }
 
     public virtual User User { get; set; } = null!;
+
+  public bool IsActive => RevokedAt is null && ExpiresAt > DateTime.UtcNow;
 }

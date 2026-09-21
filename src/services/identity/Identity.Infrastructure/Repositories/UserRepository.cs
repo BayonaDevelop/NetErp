@@ -77,4 +77,73 @@ public class UserRepository(SqlServerDbContext dbContext) : IUserRepository
 
     return token;
   }
+
+  public async Task SaveRefreshTokenAsync(RefreshToken token, CancellationToken cancellationToken)
+  {
+    _dbContext.RefreshTokens.Add(token);
+    await _dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+  }
+
+  public async Task UpdateRefreshTokenAsync(RefreshToken token, CancellationToken cancellationToken)
+  {
+    RefreshToken? entity = await _dbContext.RefreshTokens.FirstOrDefaultAsync(i => i.TokenHash.Equals(token.TokenHash), cancellationToken)
+      .ConfigureAwait(false);
+    
+    if (entity is not null)
+    {
+      entity.RevokedAt = DateTime.UtcNow;
+      await _dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }    
+  }
+
+  public async Task<RefreshToken?> GetRefreshTokenAsync(string token, CancellationToken cancellationToken)
+  {
+    RefreshToken? entity = await _dbContext.RefreshTokens
+      .Include(i => i.User)
+      .ThenInclude(i => i.Roles)
+      .FirstOrDefaultAsync(i => i.TokenHash.Equals(token), cancellationToken)
+      .ConfigureAwait(false);
+    return entity;
+  }
+
+  public async Task<List<User>> GetAllUsersByCompanyIdAsync(long companyId, CancellationToken cancellationToken)
+  {
+    List<User> entities = await _dbContext.Users
+      .Include(i => i.Roles)
+      .Where(i => i.CompanyId == companyId)
+      .ToListAsync(cancellationToken)
+      .ConfigureAwait(false);
+
+    return entities;
+  }
+
+  public async Task<User> GetUserByIdAsync(long companyId, long id, CancellationToken cancellationToken)
+  {
+    User? entity = await _dbContext.Users
+      .Include(i => i.Roles)
+      .FirstOrDefaultAsync(i => i.CompanyId == companyId && i.Id == id, cancellationToken)
+      .ConfigureAwait(false);
+
+    return entity ?? new();
+  }
+
+  public async Task UpdateUserRolesAsync(long companyId, long userId, List<string> roles, CancellationToken cancellationToken)
+  {
+    User? user = await GetUserByIdAsync(companyId, userId, cancellationToken).ConfigureAwait(false) ?? throw new InvalidOperationException("User not found");
+    
+    user.Roles.Clear();
+
+    foreach (string role in roles)
+    {
+      Role? roleEntity = await _dbContext.Roles
+        .FirstOrDefaultAsync(r => r.Name.Equals(role), cancellationToken)
+        .ConfigureAwait(false);
+
+      if (roleEntity != null)
+        user.Roles.Add(roleEntity);
+    }
+
+    await _dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+  }
+
 }

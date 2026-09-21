@@ -12,4 +12,16 @@ public interface IUserRepository
   Task CreateLogginAttemptAsync(User user, bool success, string ipAddress, CancellationToken cancellationToken);
 
   Task<string> IssueRefreshTokenAsync(User user, string ip, string token, CancellationToken cancellationToken);
+
+  Task SaveRefreshTokenAsync(RefreshToken token, CancellationToken cancellationToken);
+
+  Task UpdateRefreshTokenAsync(RefreshToken token, CancellationToken cancellationToken);
+
+  Task<RefreshToken?> GetRefreshTokenAsync(string token, CancellationToken cancellationToken);
+
+  Task<List<User>> GetAllUsersByCompanyIdAsync(long companyId, CancellationToken cancellationToken);
+
+  Task<User> GetUserByIdAsync(long companyId, long id, CancellationToken cancellationToken);
+
+  Task UpdateUserRolesAsync(long companyId, long userId, List<string> roles, CancellationToken cancellationToken);
 }
