@@ -8,7 +8,7 @@ public class LoginValidation : AbstractValidator<LoginQuery>
 {
   public LoginValidation()
   {
-    ResxLocalizer generic = new("Identity.Application.Resources.GenericMessages", typeof(CreateUserValidator).Assembly);
+    ResxLocalizer generic = new("Commons.Resources.GenericMessages", typeof(ResxLocalizer).Assembly);
 
     RuleFor(i => i.Request.CompanyId)
       .GreaterThan(0)

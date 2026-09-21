@@ -2,9 +2,12 @@ using FluentValidation.Results;
 using Identity.Application.Dto.Requests;
 using Identity.Application.Queries;
 using Identity.Application.Validators;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Identity.Test.Validators;
 
+[SuppressMessage("Style", "IDE0079:Remove unnecessary suppression", Justification = "La supresión CRR0029 es necesaria porque se aplica en Testing")]
+[SuppressMessage("Async", "CRR0029:ConfigureAwait unnecessary", Justification = "En el caso de Testing no es necesario especificar el valor de ConfigureAwait.")]
 public class LoginValidationTests
 {
   private readonly LoginValidation _sut = new();

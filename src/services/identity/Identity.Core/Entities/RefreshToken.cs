@@ -17,4 +17,6 @@ public partial class RefreshToken
     public DateTime CreatedAt { get; set; }
 
     public virtual User User { get; set; } = null!;
+
+  public bool IsActive => RevokedAt is null && ExpiresAt > DateTime.UtcNow;
 }

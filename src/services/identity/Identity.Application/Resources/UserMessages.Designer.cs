@@ -79,6 +79,33 @@ namespace Identity.Application.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to This field only accepts numbers greater than 0..
+        /// </summary>
+        internal static string INCORRECT_NUMBER_VALUE {
+            get {
+                return ResourceManager.GetString("INCORRECT_NUMBER_VALUE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Login Failed.
+        /// </summary>
+        internal static string LOGIN_FAILED {
+            get {
+                return ResourceManager.GetString("LOGIN_FAILED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Login Success.
+        /// </summary>
+        internal static string LOGIN_SUCCESS {
+            get {
+                return ResourceManager.GetString("LOGIN_SUCCESS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to This field must contain more than {0} characters..
         /// </summary>
         internal static string PASSWORD_LENGTH {
@@ -93,6 +120,15 @@ namespace Identity.Application.Resources {
         internal static string ROLE_NOT_FOUND {
             get {
                 return ResourceManager.GetString("ROLE_NOT_FOUND", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to User with Id [{0}] not found.
+        /// </summary>
+        internal static string USER_NOT_FOUND {
+            get {
+                return ResourceManager.GetString("USER_NOT_FOUND", resourceCulture);
             }
         }
     }

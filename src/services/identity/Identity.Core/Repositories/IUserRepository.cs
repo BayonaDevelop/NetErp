@@ -13,9 +13,15 @@ public interface IUserRepository
 
   Task<string> IssueRefreshTokenAsync(User user, string ip, string token, CancellationToken cancellationToken);
 
-  Task<List<User>> GetAllUsersByCompanyId(long companyId, CancellationToken cancellationToken);
+  Task SaveRefreshTokenAsync(RefreshToken token, CancellationToken cancellationToken);
+
+  Task UpdateRefreshTokenAsync(RefreshToken token, CancellationToken cancellationToken);
+
+  Task<RefreshToken?> GetRefreshTokenAsync(string token, CancellationToken cancellationToken);
+
+  Task<List<User>> GetAllUsersByCompanyIdAsync(long companyId, CancellationToken cancellationToken);
 
   Task<User> GetUserByIdAsync(long companyId, long id, CancellationToken cancellationToken);
 
-  Task UpdateUserRoles(long companyId, long userId, List<string> roles, CancellationToken cancellationToken);
+  Task UpdateUserRolesAsync(long companyId, long userId, List<string> roles, CancellationToken cancellationToken);
 }

@@ -14,7 +14,7 @@ public class GetUsersByCompanyHandler(IUserRepository repository) : IQueryHandle
   public async Task<List<UserResponseDto>> HandleAsync(GetUsersByCompanyQuery query, CancellationToken cancellationToken)
   {
     List<User> entities = await _repository
-      .GetAllUsersByCompanyId(query.CompanyId, cancellationToken)
+      .GetAllUsersByCompanyIdAsync(query.CompanyId, cancellationToken)
       .ConfigureAwait(false);
 
     return entities.Adapt<List<User>, List<UserResponseDto>>();

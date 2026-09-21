@@ -1,9 +1,12 @@
 using FluentValidation.Results;
 using Identity.Application.Dto.Requests;
 using Identity.Application.Validators;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Identity.Test.Validators;
 
+[SuppressMessage("Style", "IDE0079:Remove unnecessary suppression", Justification = "La supresión CRR0029 es necesaria porque se aplica en Testing")]
+[SuppressMessage("Async", "CRR0029:ConfigureAwait unnecessary", Justification = "En el caso de Testing no es necesario especificar el valor de ConfigureAwait.")]
 public class CreateUserValidatorTests
 {
   private readonly CreateUserValidator _sut = new();
@@ -26,7 +29,8 @@ public class CreateUserValidatorTests
     ValidationResult result = _sut.Validate(request);
 
     Assert.False(result.IsValid);
-    Assert.Contains(result.Errors, e => e.PropertyName == nameof(CreateUserRequestDto.CompanyId));
+    ValidationFailure error = Assert.Single(result.Errors, e => e.PropertyName.Equals(nameof(CreateUserRequestDto.CompanyId)));
+    Assert.Equal("This field is required", error.ErrorMessage);
   }
 
   [Fact]
@@ -37,7 +41,7 @@ public class CreateUserValidatorTests
     ValidationResult result = _sut.Validate(request);
 
     Assert.False(result.IsValid);
-    Assert.Contains(result.Errors, e => e.PropertyName == nameof(CreateUserRequestDto.Email));
+    Assert.Contains(result.Errors, e => e.PropertyName.Equals(nameof(CreateUserRequestDto.Email)));
   }
 
   [Fact]
@@ -48,7 +52,7 @@ public class CreateUserValidatorTests
     ValidationResult result = _sut.Validate(request);
 
     Assert.False(result.IsValid);
-    Assert.Contains(result.Errors, e => e.PropertyName == nameof(CreateUserRequestDto.Email));
+    Assert.Contains(result.Errors, e => e.PropertyName.Equals(nameof(CreateUserRequestDto.Email)));
   }
 
   [Fact]
@@ -59,7 +63,7 @@ public class CreateUserValidatorTests
     ValidationResult result = _sut.Validate(request);
 
     Assert.False(result.IsValid);
-    Assert.Contains(result.Errors, e => e.PropertyName == nameof(CreateUserRequestDto.Password));
+    Assert.Contains(result.Errors, e => e.PropertyName.Equals(nameof(CreateUserRequestDto.Password)));
   }
 
   [Fact]
@@ -70,7 +74,7 @@ public class CreateUserValidatorTests
     ValidationResult result = _sut.Validate(request);
 
     Assert.False(result.IsValid);
-    Assert.Contains(result.Errors, e => e.PropertyName == nameof(CreateUserRequestDto.Password));
+    Assert.Contains(result.Errors, e => e.PropertyName.Equals(nameof(CreateUserRequestDto.Password)));
   }
 
   [Fact]
@@ -81,6 +85,6 @@ public class CreateUserValidatorTests
     ValidationResult result = _sut.Validate(request);
 
     Assert.False(result.IsValid);
-    Assert.Contains(result.Errors, e => e.PropertyName == nameof(CreateUserRequestDto.Role));
+    Assert.Contains(result.Errors, e => e.PropertyName.Equals(nameof(CreateUserRequestDto.Role)));
   }
 }

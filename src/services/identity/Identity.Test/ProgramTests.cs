@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Identity.Test;
 
@@ -16,6 +17,9 @@ namespace Identity.Test;
 /// en el contenedor de DI. No ejercita logica de negocio real (no hay SQL
 /// Server disponible en el entorno de pruebas).
 /// </summary>
+
+[SuppressMessage("Style", "IDE0079:Remove unnecessary suppression", Justification = "La supresión CRR0029 es necesaria porque se aplica en Testing")]
+[SuppressMessage("Async", "CRR0029:ConfigureAwait unnecessary", Justification = "En el caso de Testing no es necesario especificar el valor de ConfigureAwait.")]
 public sealed class ProgramTests
 {
   private const string ValidConnectionString = "Server=(local);Database=IdentityTestDb;Trusted_Connection=True;TrustServerCertificate=True;";

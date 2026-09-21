@@ -8,7 +8,7 @@ public class CreateUserValidator : AbstractValidator<CreateUserRequestDto>
 {
   public CreateUserValidator()
   {
-    ResxLocalizer generic = new("Identity.Application.Resources.GenericMessages", typeof(CreateUserValidator).Assembly);
+    ResxLocalizer generic = new("Commons.Resources.GenericMessages", typeof(ResxLocalizer).Assembly);
 
     RuleFor(i => i.CompanyId)
       .NotEmpty()

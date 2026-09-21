@@ -123,10 +123,22 @@
   <data name="EMAIL_ALREADY_EXISTS" xml:space="preserve">
     <value>El email ya esta en uso</value>
   </data>
+  <data name="INCORRECT_NUMBER_VALUE" xml:space="preserve">
+    <value>Este campo solo admite números mayores a 0</value>
+  </data>
+  <data name="LOGIN_FAILED" xml:space="preserve">
+    <value>Error de inicio de sesion</value>
+  </data>
+  <data name="LOGIN_SUCCESS" xml:space="preserve">
+    <value>Inicio de sesión correcto</value>
+  </data>
   <data name="PASSWORD_LENGTH" xml:space="preserve">
     <value>Este campo debe contener mas de {0} caracteres</value>
   </data>
   <data name="ROLE_NOT_FOUND" xml:space="preserve">
     <value>El usuario no tiene un rol</value>
+  </data>
+  <data name="USER_NOT_FOUND" xml:space="preserve">
+    <value>No se encontró el usuario con el ID [{0}]</value>
   </data>
 </root>

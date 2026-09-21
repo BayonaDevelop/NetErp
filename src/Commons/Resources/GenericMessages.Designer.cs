@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace Identity.Application.Resources {
+namespace Commons.Resources {
     using System;
     
     
@@ -39,7 +39,7 @@ namespace Identity.Application.Resources {
         internal static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
-                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("Identity.Application.Resources.GenericMessages", typeof(GenericMessages).Assembly);
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("Commons.Resources.GenericMessages", typeof(GenericMessages).Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;

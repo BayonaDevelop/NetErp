@@ -7,9 +7,12 @@ using Identity.Core.Repositories;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Identity.Test.Handlers;
 
+[SuppressMessage("Style", "IDE0079:Remove unnecessary suppression", Justification = "La supresión CRR0029 es necesaria porque se aplica en Testing")]
+[SuppressMessage("Async", "CRR0029:ConfigureAwait unnecessary", Justification = "En el caso de Testing no es necesario especificar el valor de ConfigureAwait.")]
 public class CreateUserHandlerTests
 {
   private static (IUserRepository repository, IPasswordHasher<User> hasher, ILogger<CreateUserHandler> logger) CreateDependencies()
@@ -54,7 +57,7 @@ public class CreateUserHandlerTests
 
     await sut.HandleAsync(command, CancellationToken.None);
 
-    hasher.Received(1).HashPassword(Arg.Is<User>(u => u.Email == request.Email), request.Password);
+    hasher.Received(1).HashPassword(Arg.Is<User>(u => u.Email.Equals(request.Email)), request.Password);
     await repository.Received(1).CreateUSerAsync(
       request.CompanyId, request.Email, "hashed:plain-password", request.Role, Arg.Any<CancellationToken>());
     Assert.Equal("10.0.0.5", command.IpAddress);

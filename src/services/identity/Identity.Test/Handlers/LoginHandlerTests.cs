@@ -1,5 +1,3 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using Identity.Application.Dto.Requests;
 using Identity.Application.Dto.Responses;
 using Identity.Application.Handlers;
@@ -10,9 +8,14 @@ using Identity.Core.Repositories;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using NSubstitute;
+using System.Diagnostics.CodeAnalysis;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace Identity.Test.Handlers;
 
+[SuppressMessage("Style", "IDE0079:Remove unnecessary suppression", Justification = "La supresión CRR0029 es necesaria porque se aplica en Testing")]
+[SuppressMessage("Async", "CRR0029:ConfigureAwait unnecessary", Justification = "En el caso de Testing no es necesario especificar el valor de ConfigureAwait.")]
 public class LoginHandlerTests
 {
   private static Jwt CreateJwtSettings() => new()
@@ -31,7 +34,7 @@ public class LoginHandlerTests
     PasswordHash = "hashed-password",
     IsActive = true,
     CreatedAt = DateTime.UtcNow,
-    Roles = [new Role { Name = "Admin" }]
+    Roles = [new Role { Name = "Admin", NormalizedName = "ADMIN" }]
   };
 
   [Fact]
@@ -96,9 +99,9 @@ public class LoginHandlerTests
     JwtSecurityToken token = handler.ReadJwtToken(result.AccessToken);
     Assert.Equal(jwtSettings.Issuer, token.Issuer);
     Assert.Contains(jwtSettings.Audience, token.Audiences);
-    Assert.Equal(user.Id.ToString(), token.Claims.Single(c => c.Type == JwtRegisteredClaimNames.Sub).Value);
-    Assert.Equal(user.Email, token.Claims.Single(c => c.Type == JwtRegisteredClaimNames.Email).Value);
-    Assert.Contains(token.Claims, c => c.Type == ClaimTypes.Role && c.Value == "Admin");
+    Assert.Equal(user.Id.ToString(), token.Claims.Single(c => c.Type.Equals(JwtRegisteredClaimNames.Sub)).Value);
+    Assert.Equal(user.Email, token.Claims.Single(c => c.Type.Equals(JwtRegisteredClaimNames.Email)).Value);
+    Assert.Contains(token.Claims, c => c.Type.Equals(ClaimTypes.Role) && c.Value.Equals("Admin"));
 
     await repository.Received(1).CreateLogginAttemptAsync(user, true, "10.0.0.1", Arg.Any<CancellationToken>());
     await repository.Received(1).IssueRefreshTokenAsync(user, "10.0.0.1", Arg.Any<string>(), Arg.Any<CancellationToken>());

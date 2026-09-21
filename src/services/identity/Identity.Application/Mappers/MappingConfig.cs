@@ -10,6 +10,6 @@ public static class MappingConfig
   {
     TypeAdapterConfig<User, UserResponseDto>
         .NewConfig()
-        .Map(dest => dest.Roles, src => src.Roles.Select(r => r.Name).ToList());
+        .Map(dest => dest.Roles, src => src.Roles.Select(r => r.NormalizedName).ToList());
   }
 }
