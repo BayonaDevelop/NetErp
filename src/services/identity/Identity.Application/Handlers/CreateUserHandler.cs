@@ -18,7 +18,7 @@ public class CreateUserHandler(
   private readonly ILogger<CreateUserHandler> _logger = logger;
   private readonly IUserRepository _repository = repository;
   private readonly IPasswordHasher<User> _hasher = hasher;
-  private readonly ResxLocalizer _messages = new("Identity.Api.Resources.Messages", typeof(CreateUserHandler).Assembly);
+  private readonly ResxLocalizer _messages = new("Identity.Api.Resources.UserMessages", typeof(CreateUserHandler).Assembly);
 
   public async Task<bool> HandleAsync(CreateUserCommand command, CancellationToken cancellationToken)
   {
@@ -34,21 +34,21 @@ public class CreateUserHandler(
       case UserCreationStatus.CREATED:
         if (_logger.IsEnabled(LogLevel.Information))
         {
-          _logger.LogInformation("{Message}", _messages.Get("UserCreated"));
+          _logger.LogInformation("{Message}", _messages.Get("CREATED"));
         }
         return true;
 
       case UserCreationStatus.EMAIL_ALREADY_EXISTS:
         if (_logger.IsEnabled(LogLevel.Information))
         {
-          _logger.LogInformation("{Message}", _messages.Get("EmailAlreadyExist"));
+          _logger.LogInformation("{Message}", _messages.Get("EMAIL_ALREADY_EXISTS"));
         }
         return false;
 
       default:
         if (_logger.IsEnabled(LogLevel.Information))
         {
-          _logger.LogInformation("{Message}", _messages.Get("RoleNotExist"));
+          _logger.LogInformation("{Message}", _messages.Get("ROLE_NOT_FOUND"));
         }
         return false;
     }

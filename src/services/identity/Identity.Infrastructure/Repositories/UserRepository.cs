@@ -77,4 +77,43 @@ public class UserRepository(SqlServerDbContext dbContext) : IUserRepository
 
     return token;
   }
+
+  public async Task<List<User>> GetAllUsersByCompanyId(long companyId, CancellationToken cancellationToken)
+  {
+    List<User> entities = await _dbContext.Users
+      .Include(i => i.Roles)
+      .Where(i => i.CompanyId == companyId)
+      .ToListAsync(cancellationToken);
+
+    return entities;
+  }
+
+  public async Task<User> GetUserByIdAsync(long companyId, long id, CancellationToken cancellationToken)
+  {
+    User? entity = await _dbContext.Users
+      .Include(i => i.Roles)
+      .FirstOrDefaultAsync(i => i.CompanyId == companyId && i.Id == id, cancellationToken)
+      .ConfigureAwait(false);
+
+    return entity ?? new();
+  }
+
+  public async Task UpdateUserRoles(long companyId, long userId, List<string> roles, CancellationToken cancellationToken)
+  {
+    User? user = await GetUserByIdAsync(companyId, userId, cancellationToken).ConfigureAwait(false) ?? throw new InvalidOperationException("User not found");
+    
+    user.Roles.Clear();
+
+    foreach (string role in roles)
+    {
+      Role? roleEntity = await _dbContext.Roles
+        .FirstOrDefaultAsync(r => r.Name.Equals(role), cancellationToken)
+        .ConfigureAwait(false);
+
+      if (roleEntity != null)
+        user.Roles.Add(roleEntity);
+    }
+
+    await _dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+  }
 }

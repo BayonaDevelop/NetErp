@@ -5,5 +5,5 @@ namespace Identity.Application.Commands;
 
 public record CreateUserCommand(
   CreateUserRequestDto Request,
-  string ipAddress
+  string IpAddress
 ) : ICommand<bool>;

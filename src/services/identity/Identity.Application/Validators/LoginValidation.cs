@@ -1,5 +1,6 @@
-﻿using FluentValidation;
-using Identity.Application.Query;
+﻿using Commons.I18n;
+using FluentValidation;
+using Identity.Application.Queries;
 
 namespace Identity.Application.Validators;
 
@@ -7,12 +8,18 @@ public class LoginValidation : AbstractValidator<LoginQuery>
 {
   public LoginValidation()
   {
-      RuleFor(i => i.Email)
-      .NotEmpty()
-      .WithMessage("Email is required.");
+    ResxLocalizer generic = new("Identity.Application.Resources.GenericMessages", typeof(CreateUserValidator).Assembly);
 
-      RuleFor(i => i.Password)
+    RuleFor(i => i.Request.CompanyId)
+      .GreaterThan(0)
+      .WithMessage(generic.Get("FIELD_REQUIRED"));
+
+    RuleFor(i => i.Request.Email)
+      .NotEmpty()
+      .WithMessage(generic.Get("FIELD_REQUIRED"));
+
+      RuleFor(i => i.Request.Password)
         .NotEmpty()
-        .WithMessage("Password is required.");
+        .WithMessage(generic.Get("FIELD_REQUIRED"));
   }
 }

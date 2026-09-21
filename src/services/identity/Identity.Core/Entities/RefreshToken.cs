@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace Identity.Core.Entities;
+﻿namespace Identity.Core.Entities;
 
 public partial class RefreshToken
 {

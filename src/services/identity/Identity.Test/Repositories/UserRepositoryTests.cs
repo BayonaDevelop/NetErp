@@ -27,7 +27,7 @@ public class UserRepositoryTests
     User user = new() { CompanyId = 1, Email = "user@test.com", PasswordHash = "hash", IsActive = true, CreatedAt = DateTime.UtcNow };
     user.Roles.Add(role);
     context.Users.Add(user);
-    await context.SaveChangesAsync();
+    await context.SaveChangesAsync(CancellationToken.None);
 
     UserRepository sut = new(context);
 
@@ -54,7 +54,7 @@ public class UserRepositoryTests
   {
     await using SqlServerDbContext context = CreateInMemoryContext();
     context.Users.Add(new User { CompanyId = 1, Email = "dup@test.com", PasswordHash = "hash", IsActive = true, CreatedAt = DateTime.UtcNow });
-    await context.SaveChangesAsync();
+    await context.SaveChangesAsync(CancellationToken.None);
 
     UserRepository sut = new(context);
 
@@ -81,7 +81,7 @@ public class UserRepositoryTests
     await using (SqlServerDbContext seedContext = CreateInMemoryContext(dbName))
     {
       seedContext.Roles.Add(new Role { Name = "Admin" });
-      await seedContext.SaveChangesAsync();
+      await seedContext.SaveChangesAsync(CancellationToken.None);
     }
 
     await using SqlServerDbContext context = CreateInMemoryContext(dbName);
@@ -91,7 +91,7 @@ public class UserRepositoryTests
 
     Assert.Equal(UserCreationStatus.CREATED, result);
 
-    User createdUser = await context.Users.Include(u => u.Roles).SingleAsync(u => u.Email == "created@test.com");
+    User createdUser = await context.Users.Include(u => u.Roles).SingleAsync(u => u.Email.CompareTo("created@test.com") == 0, CancellationToken.None);
     Assert.Equal(10, createdUser.CompanyId);
     Assert.Equal("pwd", createdUser.PasswordHash);
     Assert.True(createdUser.IsActive);
@@ -105,13 +105,13 @@ public class UserRepositoryTests
     await using SqlServerDbContext context = CreateInMemoryContext();
     User user = new() { CompanyId = 1, Email = "user@test.com", PasswordHash = "hash", IsActive = true, CreatedAt = DateTime.UtcNow };
     context.Users.Add(user);
-    await context.SaveChangesAsync();
+    await context.SaveChangesAsync(CancellationToken.None);
 
     UserRepository sut = new(context);
 
     await sut.CreateLogginAttemptAsync(user, true, "127.0.0.1", CancellationToken.None);
 
-    LoginAttempt attempt = await context.LoginAttempts.SingleAsync();
+    LoginAttempt attempt = await context.LoginAttempts.SingleAsync(CancellationToken.None);
     Assert.Equal(user.Email, attempt.Email);
     Assert.Equal(user.Id, attempt.UserId);
     Assert.True(attempt.Success);
@@ -124,7 +124,7 @@ public class UserRepositoryTests
     await using SqlServerDbContext context = CreateInMemoryContext();
     User user = new() { CompanyId = 1, Email = "user@test.com", PasswordHash = "hash", IsActive = true, CreatedAt = DateTime.UtcNow };
     context.Users.Add(user);
-    await context.SaveChangesAsync();
+    await context.SaveChangesAsync(CancellationToken.None);
 
     UserRepository sut = new(context);
     DateTime before = DateTime.UtcNow;
@@ -133,7 +133,7 @@ public class UserRepositoryTests
 
     Assert.Equal("token-hash", token);
 
-    RefreshToken stored = await context.RefreshTokens.SingleAsync();
+    RefreshToken stored = await context.RefreshTokens.SingleAsync(CancellationToken.None);
     Assert.Equal(user.Id, stored.UserId);
     Assert.Equal("token-hash", stored.TokenHash);
     Assert.Equal("10.0.0.1", stored.CreatedByIp);
@@ -156,5 +156,157 @@ public class UserRepositoryTests
 
     await Assert.ThrowsAsync<DbUpdateException>(() =>
       sut.CreateLogginAttemptAsync(user, true, "127.0.0.1", CancellationToken.None));
+  }
+
+  [Fact]
+  public async Task GetAllUsersByCompanyId_ReturnsOnlyUsersForThatCompanyWithRoles()
+  {
+    await using SqlServerDbContext context = CreateInMemoryContext();
+    Role role = new() { Name = "Admin" };
+    User companyUser = new() { CompanyId = 1, Email = "company1@test.com", PasswordHash = "hash", IsActive = true, CreatedAt = DateTime.UtcNow };
+    companyUser.Roles.Add(role);
+    User otherCompanyUser = new() { CompanyId = 2, Email = "company2@test.com", PasswordHash = "hash", IsActive = true, CreatedAt = DateTime.UtcNow };
+    context.Users.AddRange(companyUser, otherCompanyUser);
+    await context.SaveChangesAsync(CancellationToken.None);
+
+    UserRepository sut = new(context);
+
+    List<User> result = await sut.GetAllUsersByCompanyId(1, CancellationToken.None);
+
+    User onlyResult = Assert.Single(result);
+    Assert.Equal("company1@test.com", onlyResult.Email);
+    Assert.Single(onlyResult.Roles);
+    Assert.Equal("Admin", onlyResult.Roles.First().Name);
+  }
+
+  [Fact]
+  public async Task GetAllUsersByCompanyId_WhenNoUsersMatch_ReturnsEmptyList()
+  {
+    await using SqlServerDbContext context = CreateInMemoryContext();
+    UserRepository sut = new(context);
+
+    List<User> result = await sut.GetAllUsersByCompanyId(999, CancellationToken.None);
+
+    Assert.Empty(result);
+  }
+
+  [Fact]
+  public async Task GetUserByIdAsync_WhenUserExists_ReturnsUserWithRoles()
+  {
+    await using SqlServerDbContext context = CreateInMemoryContext();
+    Role role = new() { Name = "Editor" };
+    User user = new() { CompanyId = 5, Email = "byid@test.com", PasswordHash = "hash", IsActive = true, CreatedAt = DateTime.UtcNow };
+    user.Roles.Add(role);
+    context.Users.Add(user);
+    await context.SaveChangesAsync(CancellationToken.None);
+
+    UserRepository sut = new(context);
+
+    User result = await sut.GetUserByIdAsync(5, user.Id, CancellationToken.None);
+
+    Assert.Equal("byid@test.com", result.Email);
+    Assert.Single(result.Roles);
+    Assert.Equal("Editor", result.Roles.First().Name);
+  }
+
+  [Fact]
+  public async Task GetUserByIdAsync_WhenCompanyIdDoesNotMatch_ReturnsEmptyUser()
+  {
+    await using SqlServerDbContext context = CreateInMemoryContext();
+    User user = new() { CompanyId = 5, Email = "byid2@test.com", PasswordHash = "hash", IsActive = true, CreatedAt = DateTime.UtcNow };
+    context.Users.Add(user);
+    await context.SaveChangesAsync(CancellationToken.None);
+
+    UserRepository sut = new(context);
+
+    User result = await sut.GetUserByIdAsync(999, user.Id, CancellationToken.None);
+
+    Assert.Null(result.Email);
+  }
+
+  [Fact]
+  public async Task GetUserByIdAsync_WhenIdDoesNotExist_ReturnsEmptyUser()
+  {
+    await using SqlServerDbContext context = CreateInMemoryContext();
+    UserRepository sut = new(context);
+
+    User result = await sut.GetUserByIdAsync(1, 12345, CancellationToken.None);
+
+    Assert.Null(result.Email);
+  }
+
+  [Fact]
+  public async Task UpdateUserRoles_ReplacesExistingRolesWithMatchingOnesAndIgnoresUnknownNames()
+  {
+    string dbName = Guid.NewGuid().ToString();
+    int userId;
+    await using (SqlServerDbContext seedContext = CreateInMemoryContext(dbName))
+    {
+      Role admin = new() { Name = "Admin" };
+      Role editor = new() { Name = "Editor" };
+      seedContext.Roles.AddRange(admin, editor);
+      User user = new() { CompanyId = 1, Email = "roles@test.com", PasswordHash = "hash", IsActive = true, CreatedAt = DateTime.UtcNow };
+      user.Roles.Add(admin);
+      seedContext.Users.Add(user);
+      await seedContext.SaveChangesAsync(CancellationToken.None);
+      userId = user.Id;
+    }
+
+    await using SqlServerDbContext context = CreateInMemoryContext(dbName);
+    UserRepository sut = new(context);
+
+    await sut.UpdateUserRoles(1, userId, ["Editor", "DoesNotExist"], CancellationToken.None);
+
+    await using SqlServerDbContext verifyContext = CreateInMemoryContext(dbName);
+    User updated = await verifyContext.Users.Include(u => u.Roles).SingleAsync(u => u.Id == userId, CancellationToken.None);
+    Role onlyRole = Assert.Single(updated.Roles);
+    Assert.Equal("Editor", onlyRole.Name);
+  }
+
+  [Fact]
+  public async Task UpdateUserRoles_WithEmptyRoleList_ClearsAllRoles()
+  {
+    string dbName = Guid.NewGuid().ToString();
+    int userId;
+    await using (SqlServerDbContext seedContext = CreateInMemoryContext(dbName))
+    {
+      Role admin = new() { Name = "Admin" };
+      seedContext.Roles.Add(admin);
+      User user = new() { CompanyId = 1, Email = "clear@test.com", PasswordHash = "hash", IsActive = true, CreatedAt = DateTime.UtcNow };
+      user.Roles.Add(admin);
+      seedContext.Users.Add(user);
+      await seedContext.SaveChangesAsync(CancellationToken.None);
+      userId = user.Id;
+    }
+
+    await using SqlServerDbContext context = CreateInMemoryContext(dbName);
+    UserRepository sut = new(context);
+
+    await sut.UpdateUserRoles(1, userId, [], CancellationToken.None);
+
+    await using SqlServerDbContext verifyContext = CreateInMemoryContext(dbName);
+    User updated = await verifyContext.Users.Include(u => u.Roles).SingleAsync(u => u.Id == userId, CancellationToken.None);
+    Assert.Empty(updated.Roles);
+  }
+
+  /// <summary>
+  /// Documenta el comportamiento actual: GetUserByIdAsync nunca devuelve null
+  /// (devuelve un User "vacio" via `entity ?? new()`), por lo que el
+  /// `?? throw new InvalidOperationException("User not found")` en
+  /// UpdateUserRoles es inalcanzable. Con un usuario inexistente la llamada
+  /// no lanza excepcion y no persiste ningun cambio (el User vacio nunca
+  /// queda adjunto al DbContext).
+  /// </summary>
+  [Fact]
+  public async Task UpdateUserRoles_WhenUserDoesNotExist_DoesNotThrowAndPersistsNoChanges()
+  {
+    await using SqlServerDbContext context = CreateInMemoryContext();
+    UserRepository sut = new(context);
+
+    Exception? exception = await Record.ExceptionAsync(() =>
+      sut.UpdateUserRoles(1, 999, ["Admin"], CancellationToken.None));
+
+    Assert.Null(exception);
+    Assert.Empty(context.Users);
   }
 }

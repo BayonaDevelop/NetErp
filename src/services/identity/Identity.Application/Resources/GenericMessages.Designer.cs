@@ -86,5 +86,23 @@ namespace Identity.Application.Resources {
                 return ResourceManager.GetString("PASSWORD_LENGTH", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} records were found..
+        /// </summary>
+        internal static string RECORDS_FOUND {
+            get {
+                return ResourceManager.GetString("RECORDS_FOUND", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to No records found.
+        /// </summary>
+        internal static string RECORDS_NOT_FOUND {
+            get {
+                return ResourceManager.GetString("RECORDS_NOT_FOUND", resourceCulture);
+            }
+        }
     }
 }

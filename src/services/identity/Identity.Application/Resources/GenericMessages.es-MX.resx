@@ -126,4 +126,10 @@
   <data name="PASSWORD_LENGTH" xml:space="preserve">
     <value>Este campo debe contener mas de {0} caracteres</value>
   </data>
+  <data name="RECORDS_FOUND" xml:space="preserve">
+    <value>{0} registros encontrados</value>
+  </data>
+  <data name="RECORDS_NOT_FOUND" xml:space="preserve">
+    <value>No se encontraron registros</value>
+  </data>
 </root>
