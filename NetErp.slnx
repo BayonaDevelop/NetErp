@@ -1,12 +1,1 @@
-<Solution>
-  <Folder Name="/src/">
-    <Project Path="src/Commons/Commons.csproj" Id="dfa337e0-d75d-4c0c-8c6a-b4fa835e70c6" />
-  </Folder>
-  <Folder Name="/src/services/" />
-  <Folder Name="/src/services/addresses/">
-    <Project Path="src/services/address/Address.Api/Address.Api.csproj" Id="68586f38-4279-4368-801e-52d52f2174e5" />
-    <Project Path="src/services/address/Address.Application/Address.Application.csproj" Id="eb95fbe7-35c3-45d8-b84e-a217c5fb4689" />
-    <Project Path="src/services/address/Address.Core/Address.Core.csproj" Id="52452476-eacc-4f09-840d-389a0a053db3" />
-    <Project Path="src/services/address/Address.Infrastructure/Address.Infrastructure.csproj" Id="444c4bee-b1f0-4d42-a779-d2a7415d5325" />
-  </Folder>
-</Solution>
+<Solution />
