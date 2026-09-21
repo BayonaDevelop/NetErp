@@ -3,6 +3,7 @@
     <Project Path="src/Commons/Commons.csproj" />
   </Folder>
   <Folder Name="/src/identity/">
+    <Project Path="src/services/identity/Identity.Api/Identity.Api.csproj" Id="975b37a6-185a-44c9-8b22-da210d12995a" />
     <Project Path="src/services/identity/Identity.Application/Identity.Application.csproj" />
     <Project Path="src/services/identity/Identity.Core/Identity.Core.csproj" />
     <Project Path="src/services/identity/Identity.Infrastructure/Identity.Infrastructure.csproj" />

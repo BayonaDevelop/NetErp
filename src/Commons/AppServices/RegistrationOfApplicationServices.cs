@@ -1,4 +1,4 @@
-using Commons.ExceptionHandlers;
+﻿using Commons.ExceptionHandlers;
 using Commons.Mediator;
 using FluentValidation;
 using Microsoft.AspNetCore.Builder;
@@ -9,32 +9,33 @@ using System.Reflection;
 
 namespace Commons.AppServices;
 
-/// <summary>
-/// Registro generico de la capa Application (dispatcher, handlers, validadores
-/// y decoradores de excepciones/validacion) y de la capa Infrastructure
-/// (repositorios por convencion), compartido por todos los servicios.
-/// TAssemblyMarker es cualquier tipo publico definido en el assembly a
-/// escanear (p. ej. la propia clase RegistryOfServices de ese proyecto).
-/// </summary>
-public static class ApplicationServiceRegistry<TAssemblyMarker>
+public static class RegistrationOfApplicationServices<TAssemblyMarker>
 {
   private static void RegisterOpenGenericInterfaces(IServiceCollection services, Assembly assembly, Type openGenericInterface, ServiceLifetime lifetime)
   {
-    var types = assembly.GetTypes()
-        .Where(t => t.IsClass && !t.IsAbstract);
+    var types = assembly
+      .GetTypes()
+      .Where(t => t.IsClass && !t.IsAbstract);
 
     foreach (var type in types)
     {
       var interfaces = type.GetInterfaces()
-          .Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == openGenericInterface);
+        .Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == openGenericInterface);
 
       foreach (var @interface in interfaces)
-      {
         services.Add(new ServiceDescriptor(@interface, type, lifetime));
-      }
     }
   }
 
+  /// <summary>
+  /// Registra los servicios de la capa de aplicación (Application) en el contenedor de dependencias.<br/>
+  /// * dispatcher<br/>
+  /// * handlers<br/>
+  /// * validadores<br/>
+  /// * decoradores de excepciones/validacion<br/>
+  /// </summary>
+  /// <param name="services"></param>
+  /// <returns></returns>
   public static IServiceCollection AddApplication(IServiceCollection services)
   {
     var applicationAssembly = typeof(TAssemblyMarker).Assembly;
@@ -53,29 +54,6 @@ public static class ApplicationServiceRegistry<TAssemblyMarker>
     services.TryDecorate(typeof(ICommandHandler<,>), typeof(CommandValidationExceptionHandler<,>));
     services.TryDecorate(typeof(IQueryHandler<,>), typeof(QueryUnhandledExceptionHandler<,>));
     services.TryDecorate(typeof(IQueryHandler<,>), typeof(QueryValidationExceptionHandler<,>));
-
-    return services;
-  }
-
-  /// <summary>
-  /// Escanea el assembly de TAssemblyMarker por convencion de nombres: toda
-  /// clase "XxxRepository" se registra contra su interfaz "IXxxRepository".
-  /// </summary>
-  public static IServiceCollection RegisterRepositories(IServiceCollection services, ServiceLifetime lifetime = ServiceLifetime.Scoped)
-  {
-    var infrastructureAssembly = typeof(TAssemblyMarker).Assembly;
-
-    var repositoryTypes = infrastructureAssembly.GetTypes()
-        .Where(t => t.IsClass && !t.IsAbstract && t.Name.EndsWith("Repository"));
-
-    foreach (var type in repositoryTypes)
-    {
-      var mainInterface = type.GetInterfaces().FirstOrDefault(i => i.Name.CompareTo($"I{type.Name}") == 0);
-      if (mainInterface != null)
-      {
-        services.Add(new ServiceDescriptor(mainInterface, type, lifetime));
-      }
-    }
 
     return services;
   }
