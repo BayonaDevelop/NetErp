@@ -42,7 +42,7 @@ public class LoginHandlerTests
   {
     IUserRepository repository = Substitute.For<IUserRepository>();
     IPasswordHasher<User> hasher = Substitute.For<IPasswordHasher<User>>();
-    repository.GetByUserNameAsync("missing@test.com", Arg.Any<CancellationToken>()).Returns(new User());
+    repository.GetByUserNameAsync(1, "missing@test.com", Arg.Any<CancellationToken>()).Returns(new User());
 
     LoginHandler sut = new(repository, hasher, Options.Create(CreateJwtSettings()));
     LoginQuery query = new(new LoginRequestDto(1, "missing@test.com", "whatever"), "127.0.0.1");
@@ -60,7 +60,7 @@ public class LoginHandlerTests
     IUserRepository repository = Substitute.For<IUserRepository>();
     IPasswordHasher<User> hasher = Substitute.For<IPasswordHasher<User>>();
     User user = CreateFoundUser();
-    repository.GetByUserNameAsync(user.Email, Arg.Any<CancellationToken>()).Returns(user);
+    repository.GetByUserNameAsync(user.CompanyId, user.Email, Arg.Any<CancellationToken>()).Returns(user);
     hasher.VerifyHashedPassword(user, user.PasswordHash, "wrong-password").Returns(PasswordVerificationResult.Failed);
 
     LoginHandler sut = new(repository, hasher, Options.Create(CreateJwtSettings()));
@@ -80,7 +80,7 @@ public class LoginHandlerTests
     IPasswordHasher<User> hasher = Substitute.For<IPasswordHasher<User>>();
     User user = CreateFoundUser();
     Jwt jwtSettings = CreateJwtSettings();
-    repository.GetByUserNameAsync(user.Email, Arg.Any<CancellationToken>()).Returns(user);
+    repository.GetByUserNameAsync(user.CompanyId, user.Email, Arg.Any<CancellationToken>()).Returns(user);
     hasher.VerifyHashedPassword(user, user.PasswordHash, "correct-password").Returns(PasswordVerificationResult.Success);
     repository.IssueRefreshTokenAsync(user, "10.0.0.1", Arg.Any<string>(), Arg.Any<CancellationToken>())
       .Returns("stored-refresh-token-hash");
@@ -101,7 +101,7 @@ public class LoginHandlerTests
     Assert.Contains(jwtSettings.Audience, token.Audiences);
     Assert.Equal(user.Id.ToString(), token.Claims.Single(c => c.Type.Equals(JwtRegisteredClaimNames.Sub)).Value);
     Assert.Equal(user.Email, token.Claims.Single(c => c.Type.Equals(JwtRegisteredClaimNames.Email)).Value);
-    Assert.Contains(token.Claims, c => c.Type.Equals(ClaimTypes.Role) && c.Value.Equals("Admin"));
+    Assert.Contains(token.Claims, c => c.Type.Equals(ClaimTypes.Role) && c.Value.Equals("ADMIN"));
 
     await repository.Received(1).CreateLogginAttemptAsync(user, true, "10.0.0.1", Arg.Any<CancellationToken>());
     await repository.Received(1).IssueRefreshTokenAsync(user, "10.0.0.1", Arg.Any<string>(), Arg.Any<CancellationToken>());

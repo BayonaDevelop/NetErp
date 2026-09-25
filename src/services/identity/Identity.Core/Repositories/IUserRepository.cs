@@ -7,7 +7,7 @@ public interface IUserRepository
 {
   Task<UserCreationStatus> CreateUSerAsync(long companyId, string Email, string Password, string? Role, CancellationToken cancellationToken);
 
-  Task<User> GetByUserNameAsync(string email, CancellationToken cancellationToken);
+  Task<User> GetByUserNameAsync(long companyId, string email, CancellationToken cancellationToken);
 
   Task CreateLogginAttemptAsync(User user, bool success, string ipAddress, CancellationToken cancellationToken);
 

@@ -34,7 +34,7 @@ public class UserRepositoryTests
 
     UserRepository sut = new(context);
 
-    User result = await sut.GetByUserNameAsync("user@test.com", CancellationToken.None);
+    User result = await sut.GetByUserNameAsync(1, "user@test.com", CancellationToken.None);
 
     Assert.Equal("user@test.com", result.Email);
     Assert.Single(result.Roles);
@@ -47,7 +47,7 @@ public class UserRepositoryTests
     await using SqlServerDbContext context = CreateInMemoryContext();
     UserRepository sut = new(context);
 
-    User result = await sut.GetByUserNameAsync("missing@test.com", CancellationToken.None);
+    User result = await sut.GetByUserNameAsync(1, "missing@test.com", CancellationToken.None);
 
     Assert.Null(result.Email);
   }

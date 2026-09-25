@@ -1,5 +1,6 @@
 using Commons.AppServices;
 using Commons.EndPoints;
+using Commons.ExceptionHandlers;
 using Commons.I18n;
 using Commons.Observability;
 using Identity.Api.Security;
@@ -32,6 +33,8 @@ builder.AddKestrelHardening();
 builder.Services.AddOpenApi();
 builder.Services.AddInfrastructure(Options.Create(databaseSettings));
 builder.Services.AddApplication(Options.Create(jwtSettings));
+builder.Services.AddExceptionHandler<ValidationExceptionHandler>();
+builder.Services.AddProblemDetails();
 
 builder.WebHost.ConfigureKestrel(serverOptions =>
 {
@@ -40,6 +43,8 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
 
 var app = builder.Build();
 
+app.UseExceptionHandler();
+app.UseObservability();
 app.UseLocalization("es-MX", "es-MX", "en-US");
 app.UseKestrelHardening();
 

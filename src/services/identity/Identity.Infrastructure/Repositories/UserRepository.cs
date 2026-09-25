@@ -12,7 +12,7 @@ public class UserRepository(SqlServerDbContext dbContext) : IUserRepository
 
   public async Task<UserCreationStatus> CreateUSerAsync(long companyId, string email, string password, string? role, CancellationToken cancellationToken)
   {
-    User userAlreadyExist = await GetByUserNameAsync(email, cancellationToken).ConfigureAwait(false);
+    User userAlreadyExist = await GetByUserNameAsync(companyId, email, cancellationToken).ConfigureAwait(false);
 
     if (userAlreadyExist.Email is not null)
       return UserCreationStatus.EMAIL_ALREADY_EXISTS;
@@ -35,11 +35,11 @@ public class UserRepository(SqlServerDbContext dbContext) : IUserRepository
     return UserCreationStatus.CREATED;
   }
 
-  public async Task<User> GetByUserNameAsync(string email, CancellationToken cancellationToken)
+  public async Task<User> GetByUserNameAsync(long companyId, string email, CancellationToken cancellationToken)
   {
     User? entity = await _dbContext.Users
       .Include(i => i.Roles)
-      .FirstOrDefaultAsync(i => i.Email.Equals(email), cancellationToken)
+      .FirstOrDefaultAsync(i => i.CompanyId == companyId && i.Email.Equals(email), cancellationToken)
       .ConfigureAwait(false);
 
     return entity ?? new();

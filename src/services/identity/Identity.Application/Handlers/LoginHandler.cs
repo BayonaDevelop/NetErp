@@ -34,7 +34,7 @@ public class LoginHandler(IUserRepository repository, IPasswordHasher<User> hash
         new(JwtRegisteredClaimNames.Email, user.Email),
         new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
     };
-    claims.AddRange(user.Roles.Select(role => new Claim(ClaimTypes.Role, role.Name)));
+    claims.AddRange(user.Roles.Select(role => new Claim(ClaimTypes.Role, role.NormalizedName)));
 
     var expires = DateTime.UtcNow.AddHours(1);
     var token = new JwtSecurityToken(issuer, audience, claims, expires: expires, signingCredentials: credentials);
@@ -45,7 +45,7 @@ public class LoginHandler(IUserRepository repository, IPasswordHasher<User> hash
   public async Task<LoginResponseDto> HandleAsync(LoginQuery query, CancellationToken cancellationToken)
   {
     Jwt settings = options.Value;
-    User user = await _repository.GetByUserNameAsync(query.Request.Email, cancellationToken).ConfigureAwait(false);
+    User user = await _repository.GetByUserNameAsync(query.Request.CompanyId, query.Request.Email, cancellationToken).ConfigureAwait(false);
 
     if (user.Email == null)
     {
