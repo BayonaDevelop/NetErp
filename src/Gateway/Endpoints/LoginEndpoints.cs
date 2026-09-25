@@ -40,7 +40,7 @@ public class LoginEndpoints : IEndpoint
       {
         IFormCollection form = await request.ReadFormAsync(cancellationToken).ConfigureAwait(false);
         string returnUrl = form["returnUrl"].FirstOrDefault() ?? SwaggerReturnUrl;
-        string successReturnUrl = form["destination"].FirstOrDefault() == "scalar" ? ScalarReturnUrl : SwaggerReturnUrl;
+        string successReturnUrl = form["destination"].FirstOrDefault()!.Equals("scalar") ? ScalarReturnUrl : SwaggerReturnUrl;
 
         if (!long.TryParse(form["companyId"], out long companyId))
           return Results.Redirect($"/login?error=1&returnUrl={Uri.EscapeDataString(returnUrl)}");

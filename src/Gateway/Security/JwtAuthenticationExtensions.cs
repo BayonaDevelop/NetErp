@@ -75,7 +75,7 @@ public static class JwtAuthenticationExtensions
 
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
             context.Response.ContentType = "text/plain; charset=utf-8";
-            return context.Response.WriteAsync($"Acceso denegado: se requiere el rol '{SwaggerRole}'.");
+            return context.Response.WriteAsync($"Acceso denegado: se requiere el rol '{SwaggerRole}'.", CancellationToken.None);
           }
         };
       });

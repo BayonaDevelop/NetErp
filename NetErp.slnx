@@ -5,7 +5,12 @@
     <Project Path="src/Gateway/Gateway.csproj" Id="32e536f1-aed8-4356-b7e7-ce8fd8407652" />
   </Folder>
   <Folder Name="/src/services/" />
-  <Folder Name="/src/services/address/" />
+  <Folder Name="/src/services/address/">
+    <Project Path="src/services/address/Address.Api/Address.Api.csproj" />
+    <Project Path="src/services/address/Address.Application/Address.Application.csproj" />
+    <Project Path="src/services/address/Address.Core/Address.Core.csproj" />
+    <Project Path="src/services/address/Address.Infrastructure/Address.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/src/services/identity/">
     <Project Path="src/services/identity/Identity.Api/Identity.Api.csproj" Id="975b37a6-185a-44c9-8b22-da210d12995a" />
     <Project Path="src/services/identity/Identity.Application/Identity.Application.csproj" />
@@ -13,7 +18,7 @@
     <Project Path="src/services/identity/Identity.Infrastructure/Identity.Infrastructure.csproj" />
     <Project Path="src/services/identity/Identity.Test/Identity.Test.csproj" Id="b50b53aa-918e-4f71-b795-8882d57f00de" />
   </Folder>
-  <Project Path="docker-compose.dcproj">a
+  <Project Path="docker-compose.dcproj">
     <Build />
   </Project>
 </Solution>

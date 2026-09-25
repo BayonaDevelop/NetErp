@@ -1,5 +1,6 @@
 services:
 
+  # Contenedores de Infrastructura [Observabilidad]
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.116.1
     command: [ "--config=/etc/otel-collector-config.yaml" ]
@@ -27,6 +28,7 @@ services:
       - prometheus
       - zipkin
 
+  # Contenedores de Aplicación
   identity.api:
     image: ${DOCKER_REGISTRY-}identityapi
     build:
@@ -35,6 +37,12 @@ services:
     depends_on:
       - otel-collector
 
+  address.api:
+    image: ${DOCKER_REGISTRY-}addressapi
+    build:
+      context: .
+      dockerfile: src/services/address/Address.Api/Dockerfile
+
   gateway:
     image: ${DOCKER_REGISTRY-}gateway
     build:
@@ -42,4 +50,3 @@ services:
       dockerfile: src/Gateway/Dockerfile
     depends_on:
       - otel-collector
-
