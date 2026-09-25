@@ -4,6 +4,19 @@ services:
     ports:
       - "4317:4317"
       - "4318:4318"
+      - "8889:8889"
+
+  zipkin:
+    ports:
+      - "9411:9411"
+
+  prometheus:
+    ports:
+      - "9090:9090"
+
+  grafana:
+    ports:
+      - "3000:3000"
 
   identity.api:
     environment:
