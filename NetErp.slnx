@@ -1,9 +1,12 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Commons/Commons.csproj" />
+    <Project Path="src/Gateway.Test/Gateway.Test.csproj" />
     <Project Path="src/Gateway/Gateway.csproj" Id="32e536f1-aed8-4356-b7e7-ce8fd8407652" />
   </Folder>
-  <Folder Name="/src/identity/">
+  <Folder Name="/src/services/" />
+  <Folder Name="/src/services/address/" />
+  <Folder Name="/src/services/identity/">
     <Project Path="src/services/identity/Identity.Api/Identity.Api.csproj" Id="975b37a6-185a-44c9-8b22-da210d12995a" />
     <Project Path="src/services/identity/Identity.Application/Identity.Application.csproj" />
     <Project Path="src/services/identity/Identity.Core/Identity.Core.csproj" />

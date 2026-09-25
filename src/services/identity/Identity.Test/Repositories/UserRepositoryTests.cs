@@ -1,5 +1,6 @@
 using Identity.Core.Constants;
 using Identity.Core.Entities;
+using Identity.Core.Types;
 using Identity.Infrastructure.Data;
 using Identity.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -34,22 +35,23 @@ public class UserRepositoryTests
 
     UserRepository sut = new(context);
 
-    User result = await sut.GetByUserNameAsync(1, "user@test.com", CancellationToken.None);
+    Optional<User> result = await sut.GetByUserNameAsync(1, "user@test.com", CancellationToken.None);
 
-    Assert.Equal("user@test.com", result.Email);
-    Assert.Single(result.Roles);
-    Assert.Equal("Admin", result.Roles.First().Name);
+    Assert.True(result.HasValue);
+    Assert.Equal("user@test.com", result.Value.Email);
+    Assert.Single(result.Value.Roles);
+    Assert.Equal("Admin", result.Value.Roles.First().Name);
   }
 
   [Fact]
-  public async Task GetByUserNameAsync_WhenUserDoesNotExist_ReturnsEmptyUser()
+  public async Task GetByUserNameAsync_WhenUserDoesNotExist_ReturnsNone()
   {
     await using SqlServerDbContext context = CreateInMemoryContext();
     UserRepository sut = new(context);
 
-    User result = await sut.GetByUserNameAsync(1, "missing@test.com", CancellationToken.None);
+    Optional<User> result = await sut.GetByUserNameAsync(1, "missing@test.com", CancellationToken.None);
 
-    Assert.Null(result.Email);
+    Assert.False(result.HasValue);
   }
 
   [Fact]
@@ -334,15 +336,16 @@ public class UserRepositoryTests
 
     UserRepository sut = new(context);
 
-    User result = await sut.GetUserByIdAsync(5, user.Id, CancellationToken.None);
+    Optional<User> result = await sut.GetUserByIdAsync(5, user.Id, CancellationToken.None);
 
-    Assert.Equal("byid@test.com", result.Email);
-    Assert.Single(result.Roles);
-    Assert.Equal("Editor", result.Roles.First().Name);
+    Assert.True(result.HasValue);
+    Assert.Equal("byid@test.com", result.Value.Email);
+    Assert.Single(result.Value.Roles);
+    Assert.Equal("Editor", result.Value.Roles.First().Name);
   }
 
   [Fact]
-  public async Task GetUserByIdAsync_WhenCompanyIdDoesNotMatch_ReturnsEmptyUser()
+  public async Task GetUserByIdAsync_WhenCompanyIdDoesNotMatch_ReturnsNone()
   {
     await using SqlServerDbContext context = CreateInMemoryContext();
     User user = new() { CompanyId = 5, Email = "byid2@test.com", PasswordHash = "hash", IsActive = true, CreatedAt = DateTime.UtcNow };
@@ -351,20 +354,20 @@ public class UserRepositoryTests
 
     UserRepository sut = new(context);
 
-    User result = await sut.GetUserByIdAsync(999, user.Id, CancellationToken.None);
+    Optional<User> result = await sut.GetUserByIdAsync(999, user.Id, CancellationToken.None);
 
-    Assert.Null(result.Email);
+    Assert.False(result.HasValue);
   }
 
   [Fact]
-  public async Task GetUserByIdAsync_WhenIdDoesNotExist_ReturnsEmptyUser()
+  public async Task GetUserByIdAsync_WhenIdDoesNotExist_ReturnsNone()
   {
     await using SqlServerDbContext context = CreateInMemoryContext();
     UserRepository sut = new(context);
 
-    User result = await sut.GetUserByIdAsync(1, 12345, CancellationToken.None);
+    Optional<User> result = await sut.GetUserByIdAsync(1, 12345, CancellationToken.None);
 
-    Assert.Null(result.Email);
+    Assert.False(result.HasValue);
   }
 
   [Fact]
@@ -421,24 +424,15 @@ public class UserRepositoryTests
     Assert.Empty(updated.Roles);
   }
 
-  /// <summary>
-  /// Documenta el comportamiento actual: GetUserByIdAsync nunca devuelve null
-  /// (devuelve un User "vacio" via `entity ?? new()`), por lo que el
-  /// `?? throw new InvalidOperationException("User not found")` en
-  /// UpdateUserRoles es inalcanzable. Con un usuario inexistente la llamada
-  /// no lanza excepcion y no persiste ningun cambio (el User vacio nunca
-  /// queda adjunto al DbContext).
-  /// </summary>
   [Fact]
-  public async Task UpdateUserRoles_WhenUserDoesNotExist_DoesNotThrowAndPersistsNoChanges()
+  public async Task UpdateUserRoles_WhenUserDoesNotExist_ThrowsInvalidOperationException()
   {
     await using SqlServerDbContext context = CreateInMemoryContext();
     UserRepository sut = new(context);
 
-    Exception? exception = await Record.ExceptionAsync(() =>
+    await Assert.ThrowsAsync<InvalidOperationException>(() =>
       sut.UpdateUserRolesAsync(1, 999, ["Admin"], CancellationToken.None));
 
-    Assert.Null(exception);
     Assert.Empty(context.Users);
   }
 }

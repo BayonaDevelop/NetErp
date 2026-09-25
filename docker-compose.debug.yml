@@ -1,0 +1,13 @@
+services:
+  identity.api:
+    build:
+      dockerfile: src/services/identity/Identity.Api/Dockerfile.debug
+    container_name: identity.api-debug
+    volumes:
+      - .:/src:ro
+  gateway:
+    build:
+      dockerfile: src/Gateway/Dockerfile.debug
+    container_name: gateway-debug
+    volumes:
+      - .:/src:ro
