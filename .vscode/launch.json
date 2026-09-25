@@ -1,0 +1,78 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Docker: Attach to Identity.Api",
+      "type": "coreclr",
+      "request": "attach",
+      "processName": "dotnet",
+      "pipeTransport": {
+        "pipeProgram": "docker",
+        "pipeArgs": [
+          "exec",
+          "-i",
+          "identity.api-debug"
+        ],
+        "debuggerPath": "/vsdbg/vsdbg",
+        "pipeCwd": "${workspaceFolder}",
+        "quoteArgs": false
+      },
+      "sourceFileMap": {
+        "/src": "${workspaceFolder}"
+      },
+      "justMyCode": false,
+      "requireExactSource": false,
+      "logging": {
+        "moduleLoad": false
+      },
+      "presentation": {
+        "hidden": true,
+        "group": "Docker Services",
+        "order": 1
+      },
+      "postDebugTask": "docker-compose-debug-down"
+    },
+    {
+      "name": "Docker: Attach to Gateway",
+      "type": "coreclr",
+      "request": "attach",
+      "processName": "dotnet",
+      "pipeTransport": {
+        "pipeProgram": "docker",
+        "pipeArgs": [
+          "exec",
+          "-i",
+          "gateway-debug"
+        ],
+        "debuggerPath": "/vsdbg/vsdbg",
+        "pipeCwd": "${workspaceFolder}",
+        "quoteArgs": false
+      },
+      "sourceFileMap": {
+        "/src": "${workspaceFolder}"
+      },
+      "justMyCode": false,
+      "requireExactSource": false,
+      "logging": {
+        "moduleLoad": false
+      },
+      "presentation": {
+        "hidden": true,
+        "group": "Docker Services",
+        "order": 2
+      },
+      "postDebugTask": "docker-compose-debug-down"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Debug All Docker Services",
+      "configurations": [
+        "Docker: Attach to Identity.Api",
+        "Docker: Attach to Gateway"
+      ],
+      "stopAll": true,
+      "preLaunchTask": "docker-compose-debug-up"
+    }
+  ]
+}

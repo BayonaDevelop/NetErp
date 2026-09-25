@@ -1,0 +1,155 @@
+﻿using Identity.Core.Constants;
+using Identity.Core.Entities;
+using Identity.Core.Repositories;
+using Identity.Core.Types;
+using Identity.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
+
+namespace Identity.Infrastructure.Repositories;
+
+public class UserRepository(SqlServerDbContext dbContext) : IUserRepository
+{
+  private readonly SqlServerDbContext _dbContext = dbContext;
+
+  public async Task<UserCreationStatus> CreateUSerAsync(long companyId, string email, string password, string? role, CancellationToken cancellationToken)
+  {
+    Optional<User> userAlreadyExist = await GetByUserNameAsync(companyId, email, cancellationToken).ConfigureAwait(false);
+
+    if (userAlreadyExist.HasValue)
+      return UserCreationStatus.EMAIL_ALREADY_EXISTS;
+
+    var roleEntity = await _dbContext.Roles
+      .FirstOrDefaultAsync(r => r.Name.CompareTo(role) == 0, cancellationToken)
+      .ConfigureAwait(false);
+
+    if (roleEntity == null)
+      return UserCreationStatus.ROLE_NOT_FOUND;
+
+    User userEntity = new() { CompanyId = companyId, Email = email, PasswordHash = password, IsActive = true, CreatedAt = DateTime.Now };
+    userEntity.Roles.Add(roleEntity!);
+
+    _dbContext.Users.Add(userEntity);
+    await _dbContext
+      .SaveChangesAsync(cancellationToken)
+      .ConfigureAwait(false);
+
+    return UserCreationStatus.CREATED;
+  }
+
+  public async Task<Optional<User>> GetByUserNameAsync(long companyId, string email, CancellationToken cancellationToken)
+  {
+    User? entity = await _dbContext.Users
+      .Include(i => i.Roles)
+      .FirstOrDefaultAsync(i => i.CompanyId == companyId && i.Email.Equals(email), cancellationToken)
+      .ConfigureAwait(false);
+
+    return entity is null ? Optional<User>.None() : Optional<User>.Some(entity);
+  }
+
+  public async Task CreateLogginAttemptAsync(User user, bool success, string ipAddress, CancellationToken cancellationToken)
+  {
+    LoginAttempt entity = new()
+    {
+      Email = user.Email,
+      User = user,
+      IpAddress = ipAddress,
+      Success = success,
+      AttemptedAt = DateTime.Now
+    };
+
+    _dbContext.LoginAttempts.Add(entity);
+    await _dbContext
+      .SaveChangesAsync(cancellationToken)
+      .ConfigureAwait(false);
+  }
+
+  public async Task<string> IssueRefreshTokenAsync(User user, string ip, string token, CancellationToken cancellationToken)
+  {
+    RefreshToken entity = new()
+    {
+      UserId = user.Id,
+      TokenHash = token,
+      ExpiresAt = DateTime.UtcNow.AddDays(7),
+      CreatedByIp = ip
+    };
+
+    _dbContext.RefreshTokens.Add(entity);
+    await _dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+    return token;
+  }
+
+  public async Task SaveRefreshTokenAsync(RefreshToken token, CancellationToken cancellationToken)
+  {
+    _dbContext.RefreshTokens.Add(token);
+    await _dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+  }
+
+  public async Task UpdateRefreshTokenAsync(RefreshToken token, CancellationToken cancellationToken)
+  {
+    RefreshToken? entity = await _dbContext.RefreshTokens.FirstOrDefaultAsync(i => i.TokenHash.Equals(token.TokenHash), cancellationToken)
+      .ConfigureAwait(false);
+    
+    if (entity is not null)
+    {
+      entity.RevokedAt = DateTime.UtcNow;
+      await _dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }    
+  }
+
+  public async Task<RefreshToken?> GetRefreshTokenAsync(string token, CancellationToken cancellationToken)
+  {
+    RefreshToken? entity = await _dbContext.RefreshTokens
+      .Include(i => i.User)
+      .ThenInclude(i => i.Roles)
+      .FirstOrDefaultAsync(i => i.TokenHash.Equals(token), cancellationToken)
+      .ConfigureAwait(false);
+    return entity;
+  }
+
+  public async Task<List<User>> GetAllUsersByCompanyIdAsync(long companyId, CancellationToken cancellationToken)
+  {
+    List<User> entities = await _dbContext.Users
+      .Include(i => i.Roles)
+      .Where(i => i.CompanyId == companyId)
+      .ToListAsync(cancellationToken)
+      .ConfigureAwait(false);
+
+    return entities;
+  }
+
+  public async Task<Optional<User>> GetUserByIdAsync(long companyId, long id, CancellationToken cancellationToken)
+  {
+    User? entity = await _dbContext.Users
+      .Include(i => i.Roles)
+      .FirstOrDefaultAsync(i => i.CompanyId == companyId && i.Id == id, cancellationToken)
+      .ConfigureAwait(false);
+
+    return entity is null ? Optional<User>.None() : Optional<User>.Some(entity);
+  }
+
+  public async Task UpdateUserRolesAsync(long companyId, long userId, List<string> roles, CancellationToken cancellationToken)
+  {
+    Optional<User> maybeUser = await GetUserByIdAsync(companyId, userId, cancellationToken).ConfigureAwait(false);
+
+    if (!maybeUser.HasValue)
+      throw new InvalidOperationException("User not found");
+
+    User user = maybeUser.Value;
+
+    user.Roles.Clear();
+
+    foreach (string role in roles)
+    {
+      Role? roleEntity = await _dbContext.Roles
+        .FirstOrDefaultAsync(r => r.Name.Equals(role), cancellationToken)
+        .ConfigureAwait(false);
+
+      if (roleEntity != null)
+        user.Roles.Add(roleEntity);
+    }
+
+    await _dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+  }
+
+}
