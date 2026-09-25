@@ -32,7 +32,7 @@ public class RefreshTokenHandler(IUserRepository repository, IOptions<Jwt> optio
         new(JwtRegisteredClaimNames.Email, user.Email),
         new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
     };
-    claims.AddRange(user.Roles.Select(role => new Claim(ClaimTypes.Role, role.Name)));
+    claims.AddRange(user.Roles.Select(role => new Claim(ClaimTypes.Role, role.NormalizedName)));
 
     var expires = DateTime.UtcNow.AddHours(1);
     var token = new JwtSecurityToken(issuer, audience, claims, expires: expires, signingCredentials: credentials);

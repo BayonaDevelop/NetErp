@@ -131,7 +131,7 @@ public class RefreshTokenHandlerTests
     Assert.Equal(jwtSettings.Issuer, token.Issuer);
     Assert.Contains(jwtSettings.Audience, token.Audiences);
     Assert.Equal(user.Id.ToString(), token.Claims.Single(c => c.Type.Equals(JwtRegisteredClaimNames.Sub)).Value);
-    Assert.Contains(token.Claims, c => c.Type.Equals(ClaimTypes.Role) && c.Value.Equals("Admin"));
+    Assert.Contains(token.Claims, c => c.Type.Equals(ClaimTypes.Role) && c.Value.Equals("ADMIN"));
 
     Assert.NotNull(existing.RevokedAt);
 

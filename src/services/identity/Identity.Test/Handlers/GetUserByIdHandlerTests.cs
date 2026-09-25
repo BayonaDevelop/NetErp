@@ -4,6 +4,7 @@ using Identity.Application.Mappers;
 using Identity.Application.Queries;
 using Identity.Core.Entities;
 using Identity.Core.Repositories;
+using Identity.Core.Types;
 using NSubstitute;
 using System.Diagnostics.CodeAnalysis;
 
@@ -35,7 +36,7 @@ public class GetUserByIdHandlerTests
       CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
       Roles = [new Role { Name = "Admin", NormalizedName = "ROLE_ADMIN" }]
     };
-    repository.GetUserByIdAsync(5, 8, Arg.Any<CancellationToken>()).Returns(user);
+    repository.GetUserByIdAsync(5, 8, Arg.Any<CancellationToken>()).Returns(Optional<User>.Some(user));
 
     GetUserByIdHandler sut = new(repository);
     GetUserByIdQuery query = new(5, 8);
@@ -49,18 +50,11 @@ public class GetUserByIdHandlerTests
     Assert.Equal(["ROLE_ADMIN"], result.Roles);
   }
 
-  /// <summary>
-  /// GetUserByIdAsync nunca devuelve null (entity ?? new()), asi que el
-  /// `if (result == null)` de GetUserByIdHandler es inalcanzable: cuando no
-  /// se encuentra el usuario, lo que realmente se mapea es el User "vacio".
-  /// Se documenta el resultado real (Email null, no string.Empty) en vez de
-  /// asumir la rama muerta.
-  /// </summary>
   [Fact]
-  public async Task HandleAsync_WhenUserDoesNotExist_ReturnsMappedEmptyUser()
+  public async Task HandleAsync_WhenUserDoesNotExist_ReturnsEmptyResponseDto()
   {
     IUserRepository repository = Substitute.For<IUserRepository>();
-    repository.GetUserByIdAsync(1, 999, Arg.Any<CancellationToken>()).Returns(new User());
+    repository.GetUserByIdAsync(1, 999, Arg.Any<CancellationToken>()).Returns(Optional<User>.None());
 
     GetUserByIdHandler sut = new(repository);
     GetUserByIdQuery query = new(1, 999);
@@ -68,7 +62,7 @@ public class GetUserByIdHandlerTests
     UserResponseDto result = await sut.HandleAsync(query, CancellationToken.None);
 
     Assert.Equal(0, result.Id);
-    Assert.Null(result.Email);
+    Assert.Equal(string.Empty, result.Email);
     Assert.False(result.IsActive);
     Assert.Equal(DateTime.MinValue, result.CreatedAt);
     Assert.Empty(result.Roles);

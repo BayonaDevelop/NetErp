@@ -3,6 +3,7 @@ using Identity.Application.Dto.Responses;
 using Identity.Application.Queries;
 using Identity.Core.Entities;
 using Identity.Core.Repositories;
+using Identity.Core.Types;
 using Mapster;
 
 namespace Identity.Application.Handlers;
@@ -13,11 +14,11 @@ public class GetUserByIdHandler(IUserRepository repository) : IQueryHandler<GetU
 
   public async Task<UserResponseDto> HandleAsync(GetUserByIdQuery query, CancellationToken cancellationToken)
   {
-    User? result = await _repository.GetUserByIdAsync(query.CompanyId, query.UserId, cancellationToken).ConfigureAwait(false);
+    Optional<User> result = await _repository.GetUserByIdAsync(query.CompanyId, query.UserId, cancellationToken).ConfigureAwait(false);
 
-    if (result == null) 
+    if (!result.HasValue)
       return new UserResponseDto(0, string.Empty, false, DateTime.MinValue, []);
 
-    return result.Adapt<UserResponseDto>();
+    return result.Value.Adapt<UserResponseDto>();
   }
 }

@@ -4,6 +4,7 @@ using Identity.Application.Queries;
 using Identity.Application.Settings;
 using Identity.Core.Entities;
 using Identity.Core.Repositories;
+using Identity.Core.Types;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -34,7 +35,7 @@ public class LoginHandler(IUserRepository repository, IPasswordHasher<User> hash
         new(JwtRegisteredClaimNames.Email, user.Email),
         new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
     };
-    claims.AddRange(user.Roles.Select(role => new Claim(ClaimTypes.Role, role.Name)));
+    claims.AddRange(user.Roles.Select(role => new Claim(ClaimTypes.Role, role.NormalizedName)));
 
     var expires = DateTime.UtcNow.AddHours(1);
     var token = new JwtSecurityToken(issuer, audience, claims, expires: expires, signingCredentials: credentials);
@@ -45,25 +46,27 @@ public class LoginHandler(IUserRepository repository, IPasswordHasher<User> hash
   public async Task<LoginResponseDto> HandleAsync(LoginQuery query, CancellationToken cancellationToken)
   {
     Jwt settings = options.Value;
-    User user = await _repository.GetByUserNameAsync(query.Request.Email, cancellationToken).ConfigureAwait(false);
+    Optional<User> maybeUser = await _repository.GetByUserNameAsync(query.Request.CompanyId, query.Request.Email, cancellationToken).ConfigureAwait(false);
 
-    if (user.Email == null)
+    if (!maybeUser.HasValue)
     {
       return new LoginResponseDto(string.Empty, string.Empty, string.Empty, 0);
     }
+
+    User user = maybeUser.Value;
 
     bool success =
       _hasher.VerifyHashedPassword(user, user.PasswordHash, query.Request.Password) == PasswordVerificationResult.Success;
 
     await _repository
-      .CreateLogginAttemptAsync(user!, success, query.IpAddress, cancellationToken)
+      .CreateLogginAttemptAsync(user, success, query.IpAddress, cancellationToken)
       .ConfigureAwait(false);
 
     if (success)
     {
-      var (accessToken, _) = IssueAccessToken(user!, settings.SigningKey!, settings.Issuer!, settings.Audience!);
+      var (accessToken, _) = IssueAccessToken(user, settings.SigningKey!, settings.Issuer!, settings.Audience!);
       string rawToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
-      var refreshToken = await _repository.IssueRefreshTokenAsync(user!, query.IpAddress, HashToken(rawToken), cancellationToken).ConfigureAwait(false);
+      var refreshToken = await _repository.IssueRefreshTokenAsync(user, query.IpAddress, HashToken(rawToken), cancellationToken).ConfigureAwait(false);
 
 
       return new LoginResponseDto(accessToken, refreshToken, "Bearer", settings.DurationInMinutes);

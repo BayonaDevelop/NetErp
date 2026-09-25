@@ -11,23 +11,20 @@ EXPOSE 8080
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["src/services/identity/Identity.Api/Identity.Api.csproj", "src/services/identity/Identity.Api/"]
-COPY ["src/services/identity/Identity.Infrastructure/Identity.Infrastructure.csproj", "src/services/identity/Identity.Infrastructure/"]
-COPY ["src/services/identity/Identity.Application/Identity.Application.csproj", "src/services/identity/Identity.Application/"]
+COPY ["src/Gateway/Gateway.csproj", "src/Gateway/"]
 COPY ["src/Commons/Commons.csproj", "src/Commons/"]
-COPY ["src/services/identity/Identity.Core/Identity.Core.csproj", "src/services/identity/Identity.Core/"]
-RUN dotnet restore "./src/services/identity/Identity.Api/Identity.Api.csproj"
+RUN dotnet restore "./src/Gateway/Gateway.csproj"
 COPY . .
-WORKDIR "/src/src/services/identity/Identity.Api"
-RUN dotnet build "./Identity.Api.csproj" -c $BUILD_CONFIGURATION -o /app/build
+WORKDIR "/src/src/Gateway"
+RUN dotnet build "./Gateway.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 # This stage is used to publish the service project to be copied to the final stage
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./Identity.Api.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "./Gateway.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 # This stage is used in production or when running from VS in regular mode (Default when not using the Debug configuration)
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "Identity.Api.dll"]
+ENTRYPOINT ["dotnet", "Gateway.dll"]
