@@ -205,7 +205,7 @@ public sealed class LoginEndpointsTests : IAsyncLifetime
 
     using HttpResponseMessage response = await _client.SendAsync(request);
 
-    Assert.Equal("/scalar/identity", response.Headers.Location!.OriginalString);
+    Assert.Equal("/scalar", response.Headers.Location!.OriginalString);
   }
 
   [Fact]

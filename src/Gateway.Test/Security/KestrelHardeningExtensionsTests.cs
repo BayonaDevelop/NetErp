@@ -39,7 +39,7 @@ public sealed class KestrelHardeningExtensionsTests
     Assert.Equal(TimeSpan.FromDays(365), options.MaxAge);
   }
 
-  private static async Task<(WebApplication App, HttpClient Client)> CreateAppAsync(string environmentName)
+  private static async Task<(WebApplication App, HttpClient Client)> CreateAppAsync(string environmentName, CancellationToken cancellationToken)
   {
     WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = environmentName });
     builder.WebHost.UseTestServer();
@@ -50,7 +50,7 @@ public sealed class KestrelHardeningExtensionsTests
     app.UseKestrelHardening();
     app.MapGet("/", () => Results.Ok());
 
-    await app.StartAsync(CancellationToken.None).ConfigureAwait(false);
+    await app.StartAsync(cancellationToken).ConfigureAwait(false);
 
     HttpClient client = app.GetTestClient();
     client.BaseAddress = new Uri("https://gateway.tests.local/");
@@ -60,7 +60,7 @@ public sealed class KestrelHardeningExtensionsTests
   [Fact]
   public async Task UseKestrelHardening_WhenEnvironmentIsDevelopment_DoesNotAddHstsHeader()
   {
-    (WebApplication app, HttpClient client) = await CreateAppAsync(Environments.Development);
+    (WebApplication app, HttpClient client) = await CreateAppAsync(Environments.Development, CancellationToken.None);
     await using (app)
     {
       HttpResponseMessage response = await client.GetAsync("/");
@@ -72,7 +72,7 @@ public sealed class KestrelHardeningExtensionsTests
   [Fact]
   public async Task UseKestrelHardening_WhenEnvironmentIsProduction_AddsHstsHeader()
   {
-    (WebApplication app, HttpClient client) = await CreateAppAsync(Environments.Production);
+    (WebApplication app, HttpClient client) = await CreateAppAsync(Environments.Production, CancellationToken.None);
     await using (app)
     {
       HttpResponseMessage response = await client.GetAsync("/");

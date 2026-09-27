@@ -9,7 +9,7 @@ public class LoginEndpoints : IEndpoint
   public const string IdentityHttpClientName = "identity-api";
 
   private const string SwaggerReturnUrl = "/swagger/index.html";
-  private const string ScalarReturnUrl = "/scalar/identity";
+  private const string ScalarReturnUrl = "/scalar";
 
   public static WebApplicationBuilder AddIdentityApiHttpClient(WebApplicationBuilder builder)
   {
