@@ -1,10 +1,7 @@
 ﻿using Commons.ExceptionHandlers;
 using Commons.Mediator;
 using FluentValidation;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Localization;
 using Microsoft.Extensions.DependencyInjection;
-using System.Globalization;
 using System.Reflection;
 
 namespace Commons.AppServices;

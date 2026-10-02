@@ -26,6 +26,7 @@ public class GetUsersByCompanyHandlerTests
   [Fact]
   public async Task HandleAsync_MapsUsersToResponseDtosUsingNormalizedRoleNames()
   {
+    using CancellationTokenSource cts = new();
     IUserRepository repository = Substitute.For<IUserRepository>();
     User user = new()
     {
@@ -42,7 +43,7 @@ public class GetUsersByCompanyHandlerTests
     GetUsersByCompanyHandler sut = new(repository);
     GetUsersByCompanyQuery query = new(5);
 
-    List<UserResponseDto> result = await sut.HandleAsync(query, CancellationToken.None);
+    List<UserResponseDto> result = await sut.HandleAsync(query, cts.Token);
 
     UserResponseDto dto = Assert.Single(result);
     Assert.Equal(user.Id, dto.Id);
@@ -55,13 +56,14 @@ public class GetUsersByCompanyHandlerTests
   [Fact]
   public async Task HandleAsync_WhenNoUsersExist_ReturnsEmptyList()
   {
+    using CancellationTokenSource cts = new();
     IUserRepository repository = Substitute.For<IUserRepository>();
     repository.GetAllUsersByCompanyIdAsync(99, Arg.Any<CancellationToken>()).Returns([]);
 
     GetUsersByCompanyHandler sut = new(repository);
     GetUsersByCompanyQuery query = new(99);
 
-    List<UserResponseDto> result = await sut.HandleAsync(query, CancellationToken.None);
+    List<UserResponseDto> result = await sut.HandleAsync(query, cts.Token);
 
     Assert.Empty(result);
   }

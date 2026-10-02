@@ -42,13 +42,14 @@ public class RefreshTokenHandlerTests
   [Fact]
   public async Task HandleAsync_WhenTokenDoesNotExist_ReturnsEmptyResponseWithoutSavingAnything()
   {
+    using CancellationTokenSource cts = new();
     IUserRepository repository = Substitute.For<IUserRepository>();
     repository.GetRefreshTokenAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns((RefreshToken?)null);
 
     RefreshTokenHandler sut = CreateSut(repository);
     RefreshTokenCommand command = new(new RefreshTokenRequestDto("unknown-token"), "127.0.0.1");
 
-    LoginResponseDto result = await sut.HandleAsync(command, CancellationToken.None);
+    LoginResponseDto result = await sut.HandleAsync(command, cts.Token);
 
     Assert.Equal(new LoginResponseDto(string.Empty, string.Empty, string.Empty, 0), result);
     await repository.DidNotReceiveWithAnyArgs().SaveRefreshTokenAsync(default!, default);
@@ -57,6 +58,7 @@ public class RefreshTokenHandlerTests
   [Fact]
   public async Task HandleAsync_WhenTokenIsRevoked_ReturnsEmptyResponseWithoutSavingAnything()
   {
+    using CancellationTokenSource cts = new();
     IUserRepository repository = Substitute.For<IUserRepository>();
     RefreshToken revoked = new()
     {
@@ -71,7 +73,7 @@ public class RefreshTokenHandlerTests
     RefreshTokenHandler sut = CreateSut(repository);
     RefreshTokenCommand command = new(new RefreshTokenRequestDto("revoked-token"), "127.0.0.1");
 
-    LoginResponseDto result = await sut.HandleAsync(command, CancellationToken.None);
+    LoginResponseDto result = await sut.HandleAsync(command, cts.Token);
 
     Assert.Equal(new LoginResponseDto(string.Empty, string.Empty, string.Empty, 0), result);
     await repository.DidNotReceiveWithAnyArgs().SaveRefreshTokenAsync(default!, default);
@@ -80,6 +82,7 @@ public class RefreshTokenHandlerTests
   [Fact]
   public async Task HandleAsync_WhenTokenIsExpired_ReturnsEmptyResponseWithoutSavingAnything()
   {
+    using CancellationTokenSource cts = new();
     IUserRepository repository = Substitute.For<IUserRepository>();
     RefreshToken expired = new()
     {
@@ -94,7 +97,7 @@ public class RefreshTokenHandlerTests
     RefreshTokenHandler sut = CreateSut(repository);
     RefreshTokenCommand command = new(new RefreshTokenRequestDto("expired-token"), "127.0.0.1");
 
-    LoginResponseDto result = await sut.HandleAsync(command, CancellationToken.None);
+    LoginResponseDto result = await sut.HandleAsync(command, cts.Token);
 
     Assert.Equal(new LoginResponseDto(string.Empty, string.Empty, string.Empty, 0), result);
     await repository.DidNotReceiveWithAnyArgs().SaveRefreshTokenAsync(default!, default);
@@ -103,6 +106,7 @@ public class RefreshTokenHandlerTests
   [Fact]
   public async Task HandleAsync_WhenTokenIsValid_ReturnsNewSignedTokensAndRevokesTheOldOne()
   {
+    using CancellationTokenSource cts = new();
     IUserRepository repository = Substitute.For<IUserRepository>();
     User user = CreateUser();
     RefreshToken existing = new()
@@ -119,7 +123,7 @@ public class RefreshTokenHandlerTests
     RefreshTokenHandler sut = CreateSut(repository, jwtSettings);
     RefreshTokenCommand command = new(new RefreshTokenRequestDto("valid-raw-token"), "10.0.0.9");
 
-    LoginResponseDto result = await sut.HandleAsync(command, CancellationToken.None);
+    LoginResponseDto result = await sut.HandleAsync(command, cts.Token);
 
     Assert.NotEmpty(result.AccessToken);
     Assert.NotEmpty(result.RefreshToken);

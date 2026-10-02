@@ -25,6 +25,7 @@ public class GetUserByIdHandlerTests
   [Fact]
   public async Task HandleAsync_WhenUserExists_ReturnsMappedUserWithNormalizedRoles()
   {
+    using CancellationTokenSource cts = new();
     IUserRepository repository = Substitute.For<IUserRepository>();
     User user = new()
     {
@@ -41,7 +42,7 @@ public class GetUserByIdHandlerTests
     GetUserByIdHandler sut = new(repository);
     GetUserByIdQuery query = new(5, 8);
 
-    UserResponseDto result = await sut.HandleAsync(query, CancellationToken.None);
+    UserResponseDto result = await sut.HandleAsync(query, cts.Token);
 
     Assert.Equal(user.Id, result.Id);
     Assert.Equal(user.Email, result.Email);
@@ -53,13 +54,14 @@ public class GetUserByIdHandlerTests
   [Fact]
   public async Task HandleAsync_WhenUserDoesNotExist_ReturnsEmptyResponseDto()
   {
+    using CancellationTokenSource cts = new();
     IUserRepository repository = Substitute.For<IUserRepository>();
     repository.GetUserByIdAsync(1, 999, Arg.Any<CancellationToken>()).Returns(Optional<User>.None());
 
     GetUserByIdHandler sut = new(repository);
     GetUserByIdQuery query = new(1, 999);
 
-    UserResponseDto result = await sut.HandleAsync(query, CancellationToken.None);
+    UserResponseDto result = await sut.HandleAsync(query, cts.Token);
 
     Assert.Equal(0, result.Id);
     Assert.Equal(string.Empty, result.Email);

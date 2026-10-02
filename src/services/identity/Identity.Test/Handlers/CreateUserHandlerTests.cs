@@ -30,6 +30,7 @@ public class CreateUserHandlerTests
   [InlineData(UserCreationStatus.ROLE_NOT_FOUND, false)]
   public async Task HandleAsync_ReturnsExpectedResultForEachCreationStatus(UserCreationStatus status, bool expected)
   {
+    using CancellationTokenSource cts = new();
     (IUserRepository repository, IPasswordHasher<User> hasher, ILogger<CreateUserHandler> logger) = CreateDependencies();
     repository
       .CreateUSerAsync(Arg.Any<long>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -38,7 +39,7 @@ public class CreateUserHandlerTests
     CreateUserHandler sut = new(logger, repository, hasher);
     CreateUserCommand command = new(new CreateUserRequestDto(1, "new@test.com", "P@ssw0rd!", "Admin"), "127.0.0.1");
 
-    bool result = await sut.HandleAsync(command, CancellationToken.None);
+    bool result = await sut.HandleAsync(command, cts.Token);
 
     Assert.Equal(expected, result);
   }
@@ -46,6 +47,7 @@ public class CreateUserHandlerTests
   [Fact]
   public async Task HandleAsync_HashesPasswordAndForwardsHashToRepository()
   {
+    using CancellationTokenSource cts = new();
     (IUserRepository repository, IPasswordHasher<User> hasher, ILogger<CreateUserHandler> logger) = CreateDependencies();
     repository
       .CreateUSerAsync(Arg.Any<long>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -55,7 +57,7 @@ public class CreateUserHandlerTests
     CreateUserRequestDto request = new(9, "hash-me@test.com", "plain-password", "Editor");
     CreateUserCommand command = new(request, "10.0.0.5");
 
-    await sut.HandleAsync(command, CancellationToken.None);
+    await sut.HandleAsync(command, cts.Token);
 
     hasher.Received(1).HashPassword(Arg.Is<User>(u => u.Email.Equals(request.Email)), request.Password);
     await repository.Received(1).CreateUSerAsync(
@@ -69,6 +71,7 @@ public class CreateUserHandlerTests
   [InlineData(UserCreationStatus.ROLE_NOT_FOUND)]
   public async Task HandleAsync_WhenInformationLoggingIsEnabled_LogsForEachCreationStatus(UserCreationStatus status)
   {
+    using CancellationTokenSource cts = new();
     (IUserRepository repository, IPasswordHasher<User> hasher, ILogger<CreateUserHandler> logger) = CreateDependencies();
     logger.IsEnabled(LogLevel.Information).Returns(true);
     repository
@@ -78,7 +81,7 @@ public class CreateUserHandlerTests
     CreateUserHandler sut = new(logger, repository, hasher);
     CreateUserCommand command = new(new CreateUserRequestDto(1, "new@test.com", "P@ssw0rd!", "Admin"), "127.0.0.1");
 
-    await sut.HandleAsync(command, CancellationToken.None);
+    await sut.HandleAsync(command, cts.Token);
 
     logger.Received(1).IsEnabled(LogLevel.Information);
   }

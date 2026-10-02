@@ -15,13 +15,14 @@ public class LogoutHandlerTests
   [Fact]
   public async Task HandleAsync_WhenTokenDoesNotExist_ReturnsTrueWithoutUpdatingAnything()
   {
+    using CancellationTokenSource cts = new();
     IUserRepository repository = Substitute.For<IUserRepository>();
     repository.GetRefreshTokenAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns((RefreshToken?)null);
 
     LogoutHandler sut = new(repository);
     LogoutCommand command = new(new RefreshTokenRequestDto("unknown-token"));
 
-    bool result = await sut.HandleAsync(command, CancellationToken.None);
+    bool result = await sut.HandleAsync(command, cts.Token);
 
     Assert.True(result);
     await repository.DidNotReceiveWithAnyArgs().UpdateRefreshTokenAsync(default!, default);
@@ -30,6 +31,7 @@ public class LogoutHandlerTests
   [Fact]
   public async Task HandleAsync_WhenTokenExists_RevokesItAndReturnsTrue()
   {
+    using CancellationTokenSource cts = new();
     IUserRepository repository = Substitute.For<IUserRepository>();
     RefreshToken existing = new() { UserId = 1, TokenHash = "hash", ExpiresAt = DateTime.UtcNow.AddDays(1) };
     repository.GetRefreshTokenAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(existing);
@@ -37,7 +39,7 @@ public class LogoutHandlerTests
     LogoutHandler sut = new(repository);
     LogoutCommand command = new(new RefreshTokenRequestDto("valid-token"));
 
-    bool result = await sut.HandleAsync(command, CancellationToken.None);
+    bool result = await sut.HandleAsync(command, cts.Token);
 
     Assert.True(result);
     Assert.NotNull(existing.RevokedAt);
@@ -47,6 +49,7 @@ public class LogoutHandlerTests
   [Fact]
   public async Task HandleAsync_WhenTokenIsAlreadyRevoked_StillReturnsTrueAndUpdatesAgain()
   {
+    using CancellationTokenSource cts = new();
     IUserRepository repository = Substitute.For<IUserRepository>();
     RefreshToken alreadyRevoked = new()
     {
@@ -60,7 +63,7 @@ public class LogoutHandlerTests
     LogoutHandler sut = new(repository);
     LogoutCommand command = new(new RefreshTokenRequestDto("already-revoked-token"));
 
-    bool result = await sut.HandleAsync(command, CancellationToken.None);
+    bool result = await sut.HandleAsync(command, cts.Token);
 
     Assert.True(result);
     await repository.Received(1).UpdateRefreshTokenAsync(alreadyRevoked, Arg.Any<CancellationToken>());

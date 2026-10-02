@@ -13,22 +13,33 @@ src/
   Gateway/            # API Gateway (YARP + JWT + OpenAPI aggregation)
   Gateway.Test/       # xUnit + NSubstitute para Gateway (ver seccion de Testing)
   services/
-    identity/         # único servicio implementado end-to-end
+    identity/         # servicio de referencia, implementado end-to-end
       Identity.Api/            (endpoints minimal API, Program.cs, seguridad Kestrel)
       Identity.Application/    (CQRS: Commands/Queries/Handlers/Validators/Dto/Mappers)
       Identity.Core/           (entidades + interfaces de repositorio, sin dependencias externas)
       Identity.Infrastructure/ (EF Core SqlServer, repositorios)
       Identity.Test/           (xUnit + NSubstitute, un test por Handler/Validator/Repository)
-    address/          # SCAFFOLD SIN IMPLEMENTAR — ver nota abajo
+    address/          # segundo servicio, implementado pero sin tests/validators — ver nota abajo
+      Address.Api/            (endpoints minimal API sobre geografia: paises/ciudades/
+                                municipios/localidades/asentamientos/calles/domicilios)
+      Address.Application/    (CQRS: Commands/Queries/Handlers/Dto/Mappers — SIN Validators)
+      Address.Core/           (entidades + interfaces de repositorio; SI referencia Commons)
+      Address.Infrastructure/ (EF Core SqlServer, repositorios)
+      # No existe Address.Test todavia
 ```
 
-`NetErp.slnx` solo incluye Commons, Gateway, Gateway.Test y los proyectos de
-`identity`. **`src/services/address/` está vacío**: el scaffold
-(`Address.Api` con el `WeatherForecastController` por defecto,
-`Address.Application`, `Address.Core`, `Address.Infrastructure`) fue
-eliminado del árbol de trabajo y nunca estuvo agregado al `.slnx`. Si vas a
-implementar Address, es un servicio nuevo desde cero (replicando la
-estructura de `identity`), no hay plantilla que recuperar.
+`NetErp.slnx` incluye Commons, Gateway, Gateway.Test y los proyectos de
+`identity` y `address`. **`address` ya esta implementado** (no es scaffold):
+expone `/api/v1/addresses/*` vía Gateway con casos de uso reales (alta de
+domicilio, consulta por id, catalogos de pais/ciudad/municipio/localidad/
+asentamiento). Le faltan dos cosas que sí tiene `identity` y que hay que
+replicar al tocar este servicio:
+- **`Address.Test`**: no existe ningún proyecto de tests para `address` — es
+  la brecha más grande frente al resto de la solución.
+- **Validators**: ningún Command/Query de `Address.Application` tiene su
+  `AbstractValidator<T>`; el decorador de validación (ver "Flujo de una
+  request" mas abajo) ya está enchufado y correría automáticamente en
+  cuanto se agregue uno — hoy simplemente no hay ninguno.
 
 ## Arquitectura
 
@@ -49,7 +60,7 @@ graph LR
   GwApi["Gateway<br/>YARP + JWT + Swagger/Scalar"]
   GwTest["Gateway.Test"]
 
-  subgraph IdentitySvc["Identity (único servicio implementado end-to-end)"]
+  subgraph IdentitySvc["Identity (servicio de referencia)"]
     direction TB
     IdApi["Identity.Api<br/>minimal API endpoints"]
     IdApp["Identity.Application<br/>Commands/Queries/Handlers/Validators"]
@@ -57,6 +68,14 @@ graph LR
     IdInfra["Identity.Infrastructure<br/>EF Core SqlServer + UserRepository"]
   end
   IdTest["Identity.Test"]
+
+  subgraph AddressSvc["Address (sin tests, sin validators)"]
+    direction TB
+    AddrApi["Address.Api<br/>minimal API endpoints"]
+    AddrApp["Address.Application<br/>Commands/Queries/Handlers<br/>(sin Validators)"]
+    AddrCore["Address.Core<br/>Entities + I*Repository<br/>(SI referencia Commons, a diferencia de Identity.Core)"]
+    AddrInfra["Address.Infrastructure<br/>EF Core SqlServer + *Repository"]
+  end
 
   GwApi -->|ProjectReference| Commons
   GwTest -->|ProjectReference| GwApi
@@ -68,12 +87,23 @@ graph LR
   IdTest -->|ProjectReference| IdApi
   IdTest -->|ProjectReference| IdInfra
 
+  AddrApi -->|ProjectReference| AddrInfra
+  AddrInfra -->|ProjectReference| AddrApp
+  AddrApp -->|ProjectReference| AddrCore
+  AddrApp -->|ProjectReference| Commons
+  AddrCore -->|ProjectReference| Commons
+
   GwApi -.->|"HTTP proxy YARP<br/>/api/v1/auth/* + JWT"| IdApi
+  GwApi -.->|"HTTP proxy YARP<br/>/api/v1/addresses/*"| AddrApi
 ```
 
-`Identity.Core` es la única capa sin ninguna referencia de proyecto (ni
-siquiera a Commons) — ver la nota de `Optional<T>` más abajo sobre por qué se
-mantiene así a propósito.
+`Identity.Core` es la única capa de dominio sin ninguna referencia de
+proyecto (ni siquiera a Commons) — ver la nota de `Optional<T>` más abajo
+sobre por qué se mantiene así a propósito. **`Address.Core` rompe ese
+patrón**: referencia `Commons.csproj` directamente. Es una inconsistencia
+real entre los dos servicios (no una variante intencional documentada) —
+tenlo presente antes de asumir que "ningún `*.Core` depende de nada" al
+generalizar sobre la solución.
 
 ### Infraestructura (docker-compose)
 
@@ -84,6 +114,7 @@ graph TB
   subgraph Compose["docker-compose.yml"]
     Gateway["gateway<br/>:8080 · YARP + JWT + Swagger/Scalar"]
     IdentityApi["identity.api<br/>:8080 · minimal API"]
+    AddressApi["address.api<br/>:8080 · minimal API"]
     Otel["otel-collector<br/>otlp grpc:4317 / http:4318"]
     Zipkin["zipkin<br/>traces"]
     Prometheus["prometheus<br/>métricas"]
@@ -94,10 +125,13 @@ graph TB
 
   Client -->|HTTPS| Gateway
   Gateway -->|"reverse proxy YARP<br/>http://identity.api:8080"| IdentityApi
+  Gateway -->|"reverse proxy YARP<br/>http://address.api:8080"| AddressApi
   IdentityApi -->|EF Core| SqlServer
+  AddressApi -->|EF Core| SqlServer
 
   Gateway -->|OTLP traces/metrics/logs| Otel
   IdentityApi -->|OTLP traces/metrics/logs| Otel
+  AddressApi -->|OTLP traces/metrics/logs| Otel
   Otel -->|exporter zipkin| Zipkin
   Otel -->|exporter prometheus| Prometheus
   Prometheus --> Grafana
@@ -106,14 +140,30 @@ graph TB
   Debug["docker-compose.debug.yml<br/>Dockerfile.debug + bind mount .:/src:ro<br/>(debug remoto desde Visual Studio)"]
   Debug -.->|override| Gateway
   Debug -.->|override| IdentityApi
+  Debug -.->|override| AddressApi
 ```
 
-Ambos servicios exportan **traces + metrics + logs** por OTLP al
-`otel-collector` (nunca directo a Zipkin/Prometheus/Grafana, ver sección de
-Observability más abajo); el collector reenvía traces a Zipkin y métricas a
-Prometheus, y Grafana consume de ambos. No hay contenedor de SQL Server en
-`docker-compose.yml`: `Identity.Api` espera `ConnectionStrings` por
+Los tres contenedores de aplicación (`gateway`, `identity.api`, `address.api`)
+exportan **traces + metrics + logs** por OTLP al `otel-collector` (nunca
+directo a Zipkin/Prometheus/Grafana, ver sección de Observability más abajo);
+el collector reenvía traces a Zipkin y métricas a Prometheus, y Grafana
+consume de ambos. No hay contenedor de SQL Server en `docker-compose.yml`:
+`Identity.Api` y `Address.Api` esperan `ConnectionStrings` por
 configuración/user-secrets contra una instancia externa.
+
+**Deuda conocida en `docker-compose.override.yml`**: el bloque de
+`address.api` todavía define `ASPNETCORE_HTTPS_PORTS=8081` (copiado del
+scaffold original de Visual Studio) y monta `${APPDATA}/ASP.NET/Https`,
+mientras que `identity.api` no define ningún puerto HTTPS. `Address.Api`
+fuerza Kestrel a HTTP-only en código (`ConfigureKestrel` → `ListenAnyIP(8080)`
+en `Program.cs`), pero esa variable de entorno sigue activa: Kestrel también
+lee `ASPNETCORE_HTTPS_PORTS` de forma independiente al `ConfigureKestrel`
+explícito y puede intentar abrir un endpoint HTTPS en 8081 igualmente dentro
+del contenedor, con el mismo error de certificado de desarrollo que ya se
+corrigió para `dotnet run` local (`launchSettings.json`, `Dockerfile`). Si
+vas a correr `address.api` vía `docker-compose up` y falla con "Unable to
+configure HTTPS endpoint", limpiar ese bloque para que quede igual al de
+`identity.api` es la causa más probable.
 
 ## Flujo de una request (patrón a replicar en servicios nuevos)
 
@@ -158,7 +208,65 @@ sea un servicio con nombre que no siga la convención `*Repository`/`I*`.
   (`GenericMessages` en Commons, `UserMessages` por servicio) leídos con
   `ResxLocalizer`, no con `IStringLocalizer` inyectado.
 - **Kestrel hardening**: `AddKestrelHardening()` / `UseKestrelHardening()`,
-  presente en Gateway e Identity.Api.
+  presente en Gateway e Identity.Api. **No** está centralizado en Commons:
+  cada uno tiene su propia copia en `<Servicio>/Security/
+  KestrelHardeningExtensions.cs` (con sus tests en `Gateway.Test`). Si tocas
+  este código en un servicio, revisa si el otro necesita el mismo cambio —
+  no hay un solo lugar que actualizar.
+- **OpenAPI compartido**: `Commons.AppServices.RegistrationOfOpenApi
+  .AddSharedOpenApi(this IServiceCollection)` — llamado desde
+  `Identity.Api`/`Address.Api` en vez de `builder.Services.AddOpenApi()`
+  directo. Registra un `AddDocumentTransformer` que fija
+  `document.Servers = [new() { Url = "/" }]`. Por qué: YARP no reenvía el
+  Host header original al servicio de destino por defecto
+  (`RequestHeaderOriginalHost=false`), así que el documento OpenAPI que cada
+  servicio genera terminaría con un `servers` apuntando al Host interno de
+  Docker (p.ej. `identity.api:8080`), inalcanzable desde el navegador que
+  sirve Swagger/Scalar (servidos por el Gateway). Un array de `servers`
+  vacío tampoco alcanza: el `swagger-client` embebido en Swagger UI no cae
+  de vuelta al origen actual de forma confiable y produce "Failed to fetch:
+  URL scheme must be http or https". Un servidor relativo explícito ("/") sí
+  lo resuelven ambas UI contra el origen del Gateway. Cada `*.Api` sigue
+  necesitando su propio `PackageReference` a `Microsoft.AspNetCore.OpenApi`
+  (para poder llamar `app.MapOpenApi()`), y su versión debe ser >= la que
+  fija `Commons.csproj` o falla la restauración con `NU1605` (package
+  downgrade).
+
+## Gateway (YARP)
+
+- Configuración declarativa en `Gateway/appsettings.json`, sección
+  `ReverseProxy`: **`Clusters` va primero, `Routes` después** (orden
+  deliberado en el archivo, no lo inviertas al agregar rutas nuevas). Un
+  cluster por servicio (`identity-cluster` → `http://identity.api:8080/`,
+  `address-cluster` → `http://address.api:8080/`).
+- **Cada endpoint real se registra como su propia ruta YARP** (`Match.Path` +
+  `Match.Methods` exactos), no hay un passthrough tipo `/api/v1/addresses/**`
+  que reenvíe cualquier método/ruta al cluster. Al agregar un endpoint nuevo
+  en un servicio (`new-endpoint`), agregar también su ruta correspondiente
+  en `appsettings.json` — de lo contrario el Gateway responde 404 aunque el
+  servicio ya lo exponga. Las rutas de `address` están listadas antes que
+  las de `identity` en el archivo (orden por servicio, sin significado
+  funcional en YARP — es solo la convención que se siguió al agregarlas).
+- **Agregación de OpenAPI**: cada servicio expone su propio documento en
+  `/openapi/v1.json` (via `AddSharedOpenApi()` + `app.MapOpenApi()`, solo en
+  `Development`). El Gateway lo re-expone bajo un nombre propio con una ruta
+  YARP + transform (`identity-openapi`: `/openapi/identity.json` →
+  `/openapi/v1.json` en `identity-cluster`; mismo patrón para
+  `address-openapi`). `Program.cs` registra un `SwaggerEndpoint` y un
+  `AddDocument` por servicio (Identity es `isDefault: true`); si agregas un
+  servicio nuevo, replica ambas partes (ruta YARP + registro en Swagger UI
+  y Scalar) o su documentación no aparecerá en ninguna UI.
+- Scalar muestra un documento a la vez con selector/dropdown (o navegando
+  directo a `/scalar/{documentName}`, p.ej. `/scalar/address`); que un
+  documento no aparezca "por defecto" al abrir `/scalar` no es un bug, es
+  que no es el documento `isDefault: true`.
+- `/login`, `/logout` y la protección de `/swagger`/Scalar solo se mapean en
+  `Development` (ver Testing más abajo). Fuera de eso, **ninguna ruta de
+  `/api/v1/auth/*` o `/api/v1/addresses/*` requiere autorización a nivel del
+  Gateway** — solo `/swagger` y Scalar están protegidos con la policy
+  `Swagger`. Si el plan es exigir JWT en las rutas de negocio, hoy no hay
+  ningún `.RequireAuthorization()` aplicado a esas rutas de YARP; es trabajo
+  pendiente, no una omisión de esta nota.
 
 ## Seguridad (JWT)
 
@@ -191,13 +299,17 @@ sea un servicio con nombre que no siga la convención `*Repository`/`I*`.
 ## Testing
 
 - **Identity.Test** (`src/services/identity/Identity.Test`) y **Gateway.Test**
-  (`src/Gateway.Test`) son los dos proyectos de test, ambos xUnit + NSubstitute
-  + `Microsoft.AspNetCore.Mvc.Testing`/`TestHost`. Naming: `<Proyecto>.Test`
-  (no `<Proyecto>Test`), como el resto de la solución.
+  (`src/Gateway.Test`) son los únicos dos proyectos de test hoy, ambos xUnit +
+  NSubstitute + `Microsoft.AspNetCore.Mvc.Testing`/`TestHost`. Naming:
+  `<Proyecto>.Test` (no `<Proyecto>Test`), como el resto de la solución.
+  **`address` no tiene `Address.Test`** — si vas a agregarlo, replica esta
+  convención de naming y el resto de esta sección.
 - Para que `WebApplicationFactory<Program>` funcione, cada `*.Api`/Gateway
   `Program.cs` termina con `public partial class Program { }` (top-level
   statements + WebApplicationFactory lo requiere). Si se reescribe un
-  `Program.cs`, no borrar esa línea.
+  `Program.cs`, no borrar esa línea. **`Address.Api/Program.cs` todavía no
+  la tiene** (consistente con que no existe `Address.Test` — nadie la
+  necesitó todavía): agrégala como parte de crear `Address.Test`, no antes.
 - Patrón de test de endpoints (`AuthenticationEndpointsTests`,
   `LoginEndpointsTests`): NO usar `WebApplicationFactory` completo para probar
   un solo `IEndpoint`; construir un `WebApplication.CreateBuilder()` +
@@ -251,9 +363,35 @@ sea un servicio con nombre que no siga la convención `*Repository`/`I*`.
   `InvalidOperationException` con usuario inexistente (antes era código
   muerto) y `GetUserByIdHandler` ahora sí devuelve el DTO vacío explícito
   (`Email = string.Empty`) en vez de mapear el User vacío (`Email = null`).
-- `src/services/address/` está vacío (scaffold eliminado, ver sección
-  "Estructura de la solución"): antes de "arreglar" algo ahí, confirma si el
-  pedido es justamente crear el servicio desde cero.
+- **`AddressRepository.GetAddressByIdAsync` reintrodujo el sentinel que
+  Identity ya dejó atrás**: devuelve `entity ?? new()` (`Address.Infrastructure
+  /Repositories/AddressRepository.cs`) para "no encontrado", el mismo patrón
+  que `IUserRepository` tenía antes de migrar a `Optional<T>` (ver el punto
+  "Resuelto" arriba). `Address.Core` ya referencia `Commons` (a diferencia
+  de `Identity.Core`), así que si se replica el patrón `Optional<T>` para
+  `address`, hay una decisión de diseño real a tomar: copiar el struct en
+  `Address.Core` (consistente con la guía "Resuelto" de arriba) o
+  aprovechar que `Address.Core` ya depende de `Commons` y mover `Optional<T>`
+  ahí como pieza transversal — no asumas una u otra sin preguntarlo.
+- **Bug conocido, no corregido**: `AuthenticationEndpoits.cs`, endpoint
+  `create-user`, hace `return dispatcher.SendAsync(...).ConfigureAwait(false);`
+  dentro de un lambda `async` **sin `await`**. El lambda async termina
+  devolviendo un `ConfiguredTaskAwaitable<bool>` como "resultado" en vez de
+  `bool`, y minimal API lo serializa tal cual — rompe el JSON de respuesta.
+  Failing tests: `Identity.Test.Endpoints.AuthenticationEndpointsTests
+  .CreateUser_WhenDispatcherSucceeds_ReturnsOkTrue` y
+  `..._WhenDispatcherFails_ReturnsOkFalse`. El fix es reponer el `await`
+  (patrón usado en el resto de los handlers de este mismo archivo:
+  `login`, `refresh-token`); no se aplicó todavía porque no se pidió como
+  parte de una tarea de documentación — confírmalo antes de tocarlo.
+- `Address.Api.csproj` conserva `PackageReference
+  Include="Grpc.AspNetCore.Server"` sin ningún uso real (no hay `.proto`, ni
+  `MapGrpcService`, ni ningún tipo gRPC en el proyecto) — resto de un scaffold
+  anterior que usaba Protobuf para el contrato de `Address` y ya no existe.
+  Candidato a limpieza si nadie planea agregar gRPC a este servicio.
+- `docker-compose.override.yml`: ver la nota de deuda en la sección
+  "Infraestructura (docker-compose)" sobre `ASPNETCORE_HTTPS_PORTS=8081`
+  todavía presente en el bloque de `address.api`.
 
 ## Comandos útiles
 
@@ -262,7 +400,7 @@ dotnet build NetErp.slnx
 dotnet test NetErp.slnx                                             # todos los tests (122 al momento de escribir esto)
 dotnet test src/services/identity/Identity.Test/Identity.Test.csproj
 dotnet test src/Gateway.Test/Gateway.Test.csproj
-docker-compose up            # Gateway + Identity.Api + OTel collector + Zipkin + Prometheus + Grafana
+docker-compose up            # Gateway + Identity.Api + Address.Api + OTel collector + Zipkin + Prometheus + Grafana
 ```
 
 No hay `Directory.Build.props` ni `global.json`; cada `.csproj` fija su

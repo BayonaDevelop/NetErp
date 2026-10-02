@@ -30,7 +30,7 @@ builder.AddMultiLanguageSupport();
 builder.AddObservability(serviceName);
 builder.AddKestrelHardening();
 
-builder.Services.AddOpenApi();
+builder.Services.AddSharedOpenApi();
 builder.Services.AddInfrastructure(Options.Create(databaseSettings));
 builder.Services.AddApplication(Options.Create(jwtSettings));
 builder.Services.AddExceptionHandler<ValidationExceptionHandler>();

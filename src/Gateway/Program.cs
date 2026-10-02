@@ -44,6 +44,7 @@ if (app.Environment.IsDevelopment())
   app.UseSwaggerUI(options =>
   {
     options.SwaggerEndpoint("/openapi/identity.json", "Identity API");
+    options.SwaggerEndpoint("/openapi/address.json", "Address API");
     options.RoutePrefix = "swagger";
   });
 
@@ -51,8 +52,9 @@ if (app.Environment.IsDevelopment())
   {
     // Sin routePattern explicito: Scalar arma la URL del documento con su
     // propio OpenApiRoutePattern ("/openapi/{documentName}.json"), asi que
-    // el nombre "identity" debe coincidir con la ruta expuesta por YARP.
+    // el nombre de cada documento debe coincidir con la ruta expuesta por YARP.
     options.AddDocument("identity", "Identity API", isDefault: true);
+    options.AddDocument("address", "Address API");
   }).RequireAuthorization(JwtAuthenticationExtensions.SwaggerPolicy);
 }
 

@@ -41,6 +41,7 @@ public class LoginHandlerTests
   [Fact]
   public async Task HandleAsync_WhenUserDoesNotExist_ReturnsEmptyResponseWithoutCheckingPasswordOrLoggingAttempt()
   {
+    using CancellationTokenSource cts = new();
     IUserRepository repository = Substitute.For<IUserRepository>();
     IPasswordHasher<User> hasher = Substitute.For<IPasswordHasher<User>>();
     repository.GetByUserNameAsync(1, "missing@test.com", Arg.Any<CancellationToken>()).Returns(Optional<User>.None());
@@ -48,7 +49,7 @@ public class LoginHandlerTests
     LoginHandler sut = new(repository, hasher, Options.Create(CreateJwtSettings()));
     LoginQuery query = new(new LoginRequestDto(1, "missing@test.com", "whatever"), "127.0.0.1");
 
-    LoginResponseDto result = await sut.HandleAsync(query, CancellationToken.None);
+    LoginResponseDto result = await sut.HandleAsync(query, cts.Token);
 
     Assert.Equal(new LoginResponseDto(string.Empty, string.Empty, string.Empty, 0), result);
     hasher.DidNotReceiveWithAnyArgs().VerifyHashedPassword(default!, default!, default!);
@@ -58,6 +59,7 @@ public class LoginHandlerTests
   [Fact]
   public async Task HandleAsync_WhenPasswordIsInvalid_ReturnsEmptyResponseAndRecordsFailedAttempt()
   {
+    using CancellationTokenSource cts = new();
     IUserRepository repository = Substitute.For<IUserRepository>();
     IPasswordHasher<User> hasher = Substitute.For<IPasswordHasher<User>>();
     User user = CreateFoundUser();
@@ -67,7 +69,7 @@ public class LoginHandlerTests
     LoginHandler sut = new(repository, hasher, Options.Create(CreateJwtSettings()));
     LoginQuery query = new(new LoginRequestDto(user.CompanyId, user.Email, "wrong-password"), "10.0.0.1");
 
-    LoginResponseDto result = await sut.HandleAsync(query, CancellationToken.None);
+    LoginResponseDto result = await sut.HandleAsync(query, cts.Token);
 
     Assert.Equal(new LoginResponseDto(string.Empty, string.Empty, string.Empty, 0), result);
     await repository.Received(1).CreateLogginAttemptAsync(user, false, "10.0.0.1", Arg.Any<CancellationToken>());
@@ -77,6 +79,7 @@ public class LoginHandlerTests
   [Fact]
   public async Task HandleAsync_WhenCredentialsAreValid_ReturnsSignedTokensAndRecordsSuccessfulAttempt()
   {
+    using CancellationTokenSource cts = new();
     IUserRepository repository = Substitute.For<IUserRepository>();
     IPasswordHasher<User> hasher = Substitute.For<IPasswordHasher<User>>();
     User user = CreateFoundUser();
@@ -89,7 +92,7 @@ public class LoginHandlerTests
     LoginHandler sut = new(repository, hasher, Options.Create(jwtSettings));
     LoginQuery query = new(new LoginRequestDto(user.CompanyId, user.Email, "correct-password"), "10.0.0.1");
 
-    LoginResponseDto result = await sut.HandleAsync(query, CancellationToken.None);
+    LoginResponseDto result = await sut.HandleAsync(query, cts.Token);
 
     Assert.NotEmpty(result.AccessToken);
     Assert.Equal("stored-refresh-token-hash", result.RefreshToken);

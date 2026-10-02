@@ -55,8 +55,8 @@ public sealed class ProgramTests
     IProxyConfigProvider configProvider = factory.Services.GetRequiredService<IProxyConfigProvider>();
     IProxyConfig config = configProvider.GetConfig();
 
-    Assert.Contains(config.Routes, r => r.RouteId == "identity-login");
-    Assert.Contains(config.Clusters, c => c.ClusterId == "identity-cluster");
+    Assert.Contains(config.Routes, r => r.RouteId.CompareTo("identity-login") == 0);
+    Assert.Contains(config.Clusters, c => c.ClusterId.CompareTo("identity-cluster") == 0);
   }
 
   [Fact]
@@ -69,7 +69,7 @@ public sealed class ProgramTests
       .Endpoints
       .OfType<RouteEndpoint>();
 
-    Assert.Contains(endpoints, e => e.RoutePattern.RawText == "/health");
+    Assert.Contains(endpoints, e => e.RoutePattern.RawText!.CompareTo("/health") == 0);
   }
 
   [Fact]
@@ -82,8 +82,8 @@ public sealed class ProgramTests
       .Endpoints
       .OfType<RouteEndpoint>();
 
-    Assert.Contains(endpoints, e => e.RoutePattern.RawText == "/login");
-    Assert.Contains(endpoints, e => e.RoutePattern.RawText == "/logout");
+    Assert.Contains(endpoints, e => e.RoutePattern.RawText!.CompareTo("/login") == 0);
+    Assert.Contains(endpoints, e => e.RoutePattern.RawText!.CompareTo("/logout") == 0);
   }
 
   [Fact]
@@ -96,8 +96,8 @@ public sealed class ProgramTests
       .Endpoints
       .OfType<RouteEndpoint>();
 
-    Assert.DoesNotContain(endpoints, e => e.RoutePattern.RawText == "/login");
-    Assert.DoesNotContain(endpoints, e => e.RoutePattern.RawText == "/logout");
-    Assert.Contains(endpoints, e => e.RoutePattern.RawText == "/health");
+    Assert.DoesNotContain(endpoints, e => e.RoutePattern.RawText!.CompareTo("/login") == 0);
+    Assert.DoesNotContain(endpoints, e => e.RoutePattern.RawText!.CompareTo("/logout") == 0);
+    Assert.Contains(endpoints, e => e.RoutePattern.RawText!.CompareTo("/health") == 0);
   }
 }

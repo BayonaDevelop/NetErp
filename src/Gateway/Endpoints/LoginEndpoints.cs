@@ -9,7 +9,7 @@ public class LoginEndpoints : IEndpoint
   public const string IdentityHttpClientName = "identity-api";
 
   private const string SwaggerReturnUrl = "/swagger/index.html";
-  private const string ScalarReturnUrl = "/scalar/identity";
+  private const string ScalarReturnUrl = "/scalar";
 
   public static WebApplicationBuilder AddIdentityApiHttpClient(WebApplicationBuilder builder)
   {
@@ -40,7 +40,7 @@ public class LoginEndpoints : IEndpoint
       {
         IFormCollection form = await request.ReadFormAsync(cancellationToken).ConfigureAwait(false);
         string returnUrl = form["returnUrl"].FirstOrDefault() ?? SwaggerReturnUrl;
-        string successReturnUrl = form["destination"].FirstOrDefault() == "scalar" ? ScalarReturnUrl : SwaggerReturnUrl;
+        string successReturnUrl = form["destination"].FirstOrDefault()!.Equals("scalar") ? ScalarReturnUrl : SwaggerReturnUrl;
 
         if (!long.TryParse(form["companyId"], out long companyId))
           return Results.Redirect($"/login?error=1&returnUrl={Uri.EscapeDataString(returnUrl)}");

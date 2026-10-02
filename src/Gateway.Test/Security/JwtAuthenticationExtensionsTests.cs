@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 
@@ -62,7 +61,7 @@ public sealed class JwtAuthenticationExtensionsTests
     Assert.Contains("Jwt", exception.Message);
   }
 
-  private static async Task<(WebApplication App, HttpClient Client)> CreateProtectedAppAsync()
+  private static async Task<(WebApplication App, HttpClient Client)> CreateProtectedAppAsync(CancellationToken cancellationToken)
   {
     WebApplicationBuilder builder = WebApplication.CreateBuilder();
     builder.WebHost.UseTestServer();
@@ -85,14 +84,15 @@ public sealed class JwtAuthenticationExtensionsTests
     app.MapGet("/swagger/index.html", () => Results.Text("swagger-ui"));
     app.MapGet("/public", () => Results.Text("public"));
 
-    await app.StartAsync(CancellationToken.None).ConfigureAwait(false);
+    await app.StartAsync(cancellationToken).ConfigureAwait(false);
     return (app, app.GetTestClient());
   }
 
   [Fact]
   public async Task RequireAuthorizationForPath_WhenPathIsOutsidePrefix_IsAccessibleWithoutAuthentication()
   {
-    (WebApplication app, HttpClient client) = await CreateProtectedAppAsync();
+    using CancellationTokenSource cts = new();
+    (WebApplication app, HttpClient client) = await CreateProtectedAppAsync(cts.Token);
     await using (app)
     {
       HttpResponseMessage response = await client.GetAsync("/public");
@@ -104,7 +104,8 @@ public sealed class JwtAuthenticationExtensionsTests
   [Fact]
   public async Task RequireAuthorizationForPath_WhenNoTokenAndClientDoesNotAcceptHtml_ReturnsUnauthorized()
   {
-    (WebApplication app, HttpClient client) = await CreateProtectedAppAsync();
+    using CancellationTokenSource cts = new();
+    (WebApplication app, HttpClient client) = await CreateProtectedAppAsync(cts.Token);
     await using (app)
     {
       HttpResponseMessage response = await client.GetAsync("/swagger/index.html");
@@ -116,7 +117,8 @@ public sealed class JwtAuthenticationExtensionsTests
   [Fact]
   public async Task RequireAuthorizationForPath_WhenNoTokenAndClientAcceptsHtml_RedirectsToLoginPage()
   {
-    (WebApplication app, HttpClient client) = await CreateProtectedAppAsync();
+    using CancellationTokenSource cts = new();
+    (WebApplication app, HttpClient client) = await CreateProtectedAppAsync(cts.Token);
     await using (app)
     {
       using HttpRequestMessage request = new(HttpMethod.Get, "/swagger/index.html");
@@ -134,7 +136,8 @@ public sealed class JwtAuthenticationExtensionsTests
   [Fact]
   public async Task RequireAuthorizationForPath_WhenTokenIsExpired_ReturnsUnauthorized()
   {
-    (WebApplication app, HttpClient client) = await CreateProtectedAppAsync();
+    using CancellationTokenSource cts = new();
+    (WebApplication app, HttpClient client) = await CreateProtectedAppAsync(cts.Token);
     await using (app)
     {
       using HttpRequestMessage request = new(HttpMethod.Get, "/swagger/index.html");
@@ -149,7 +152,8 @@ public sealed class JwtAuthenticationExtensionsTests
   [Fact]
   public async Task RequireAuthorizationForPath_WhenTokenIsSignedWithAnUnknownKey_ReturnsUnauthorized()
   {
-    (WebApplication app, HttpClient client) = await CreateProtectedAppAsync();
+    using CancellationTokenSource cts = new();
+    (WebApplication app, HttpClient client) = await CreateProtectedAppAsync(cts.Token);
     await using (app)
     {
       using HttpRequestMessage request = new(HttpMethod.Get, "/swagger/index.html");
@@ -164,7 +168,8 @@ public sealed class JwtAuthenticationExtensionsTests
   [Fact]
   public async Task RequireAuthorizationForPath_WhenTokenLacksSwaggerRoleAndClientDoesNotAcceptHtml_ReturnsForbidden()
   {
-    (WebApplication app, HttpClient client) = await CreateProtectedAppAsync();
+    using CancellationTokenSource cts = new();
+    (WebApplication app, HttpClient client) = await CreateProtectedAppAsync(cts.Token);
     await using (app)
     {
       using HttpRequestMessage request = new(HttpMethod.Get, "/swagger/index.html");
@@ -179,7 +184,8 @@ public sealed class JwtAuthenticationExtensionsTests
   [Fact]
   public async Task RequireAuthorizationForPath_WhenTokenLacksSwaggerRoleAndClientAcceptsHtml_ReturnsForbiddenWithMessage()
   {
-    (WebApplication app, HttpClient client) = await CreateProtectedAppAsync();
+    using CancellationTokenSource cts = new();
+    (WebApplication app, HttpClient client) = await CreateProtectedAppAsync(cts.Token);
     await using (app)
     {
       using HttpRequestMessage request = new(HttpMethod.Get, "/swagger/index.html");
@@ -198,7 +204,8 @@ public sealed class JwtAuthenticationExtensionsTests
   [Fact]
   public async Task RequireAuthorizationForPath_WhenTokenHasSwaggerRoleInAuthorizationHeader_ReturnsOk()
   {
-    (WebApplication app, HttpClient client) = await CreateProtectedAppAsync();
+    using CancellationTokenSource cts = new();
+    (WebApplication app, HttpClient client) = await CreateProtectedAppAsync(cts.Token);
     await using (app)
     {
       using HttpRequestMessage request = new(HttpMethod.Get, "/swagger/index.html");
@@ -214,7 +221,8 @@ public sealed class JwtAuthenticationExtensionsTests
   [Fact]
   public async Task RequireAuthorizationForPath_WhenTokenHasSwaggerRoleInCookieAndNoAuthorizationHeader_ReturnsOk()
   {
-    (WebApplication app, HttpClient client) = await CreateProtectedAppAsync();
+    using CancellationTokenSource cts = new();
+    (WebApplication app, HttpClient client) = await CreateProtectedAppAsync(cts.Token);
     await using (app)
     {
       using HttpRequestMessage request = new(HttpMethod.Get, "/swagger/index.html");
