@@ -26,6 +26,7 @@ public sealed class AuthenticationEndpointsTests : IAsyncLifetime
 
   public async Task InitializeAsync()
   {
+    using CancellationTokenSource cts = new();
     WebApplicationBuilder builder = WebApplication.CreateBuilder();
     builder.WebHost.UseTestServer();
     builder.Logging.ClearProviders();
@@ -34,39 +35,42 @@ public sealed class AuthenticationEndpointsTests : IAsyncLifetime
     _app = builder.Build();
     AuthenticationEndpoits.MapEndpoints(_app);
 
-    await _app.StartAsync(CancellationToken.None).ConfigureAwait(false);
+    await _app.StartAsync(cts.Token).ConfigureAwait(false);
     _client = _app.GetTestClient();
   }
 
   public async Task DisposeAsync()
   {
+    using CancellationTokenSource cts = new();
     _client.Dispose();
-    await _app.StopAsync(CancellationToken.None).ConfigureAwait(false);
+    await _app.StopAsync(cts.Token).ConfigureAwait(false);
     await _app.DisposeAsync().ConfigureAwait(false);
   }
 
   [Fact]
   public async Task Login_WhenCredentialsAreValid_ReturnsOkWithTokens()
   {
+    using CancellationTokenSource cts = new();
     LoginRequestDto request = new(1, "user@test.com", "P@ssw0rd");
     LoginResponseDto expected = new("access-token", "refresh-token", "Bearer", 3600);
     _dispatcher.SendAsync(Arg.Any<LoginQuery>(), Arg.Any<CancellationToken>()).Returns(expected);
 
-    HttpResponseMessage response = await _client.PostAsJsonAsync("api/v1/auth/login", request, CancellationToken.None);
+    HttpResponseMessage response = await _client.PostAsJsonAsync("api/v1/auth/login", request, cts.Token);
 
     Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-    LoginResponseDto? body = await response.Content.ReadFromJsonAsync<LoginResponseDto>(CancellationToken.None);
+    LoginResponseDto? body = await response.Content.ReadFromJsonAsync<LoginResponseDto>(cts.Token);
     Assert.Equal(expected, body);
   }
 
   [Fact]
   public async Task Login_WhenCredentialsAreInvalid_ReturnsUnauthorized()
   {
+    using CancellationTokenSource cts = new();
     LoginRequestDto request = new(1, "user@test.com", "wrong-password");
     LoginResponseDto empty = new(string.Empty, string.Empty, string.Empty, 0);
     _dispatcher.SendAsync(Arg.Any<LoginQuery>(), Arg.Any<CancellationToken>()).Returns(empty);
 
-    HttpResponseMessage response = await _client.PostAsJsonAsync("api/v1/auth/login", request, CancellationToken.None);
+    HttpResponseMessage response = await _client.PostAsJsonAsync("api/v1/auth/login", request, cts.Token);
 
     Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     string body = await response.Content.ReadAsStringAsync();
@@ -76,11 +80,12 @@ public sealed class AuthenticationEndpointsTests : IAsyncLifetime
   [Fact]
   public async Task Login_ForwardsSubmittedCredentialsToDispatcher()
   {
+    using CancellationTokenSource cts = new();
     LoginRequestDto request = new(7, "someone@test.com", "secret");
     _dispatcher.SendAsync(Arg.Any<LoginQuery>(), Arg.Any<CancellationToken>())
       .Returns(new LoginResponseDto("token", "refresh", "Bearer", 60));
 
-    await _client.PostAsJsonAsync("api/v1/auth/login", request, CancellationToken.None);
+    await _client.PostAsJsonAsync("api/v1/auth/login", request, cts.Token);
 
     await _dispatcher.Received(1).SendAsync(
       Arg.Is<LoginQuery>(q =>
@@ -104,36 +109,39 @@ public sealed class AuthenticationEndpointsTests : IAsyncLifetime
   [Fact]
   public async Task CreateUser_WhenDispatcherSucceeds_ReturnsOkTrue()
   {
+    using CancellationTokenSource cts = new();
     CreateUserRequestDto request = new(1, "new@test.com", "P@ssw0rd", "Admin");
     _dispatcher.SendAsync(Arg.Any<CreateUserCommand>(), Arg.Any<CancellationToken>()).Returns(true);
 
-    HttpResponseMessage response = await _client.PostAsJsonAsync("api/v1/auth/create-user", request, CancellationToken.None);
+    HttpResponseMessage response = await _client.PostAsJsonAsync("api/v1/auth/create-user", request, cts.Token);
 
     Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-    bool body = await response.Content.ReadFromJsonAsync<bool>(CancellationToken.None);
+    bool body = await response.Content.ReadFromJsonAsync<bool>(cts.Token);
     Assert.True(body);
   }
 
   [Fact]
   public async Task CreateUser_WhenDispatcherFails_ReturnsOkFalse()
   {
+    using CancellationTokenSource cts = new();
     CreateUserRequestDto request = new(1, "dup@test.com", "P@ssw0rd", "Admin");
     _dispatcher.SendAsync(Arg.Any<CreateUserCommand>(), Arg.Any<CancellationToken>()).Returns(false);
 
-    HttpResponseMessage response = await _client.PostAsJsonAsync("api/v1/auth/create-user", request, CancellationToken.None);
+    HttpResponseMessage response = await _client.PostAsJsonAsync("api/v1/auth/create-user", request, cts.Token);
 
     Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-    bool body = await response.Content.ReadFromJsonAsync<bool>(CancellationToken.None);
+    bool body = await response.Content.ReadFromJsonAsync<bool>(cts.Token);
     Assert.False(body);
   }
 
   [Fact]
   public async Task CreateUser_ForwardsSubmittedDataToDispatcher()
   {
+    using CancellationTokenSource cts = new();
     CreateUserRequestDto request = new(3, "another@test.com", "pwd", "Editor");
     _dispatcher.SendAsync(Arg.Any<CreateUserCommand>(), Arg.Any<CancellationToken>()).Returns(true);
 
-    await _client.PostAsJsonAsync("api/v1/auth/create-user", request, CancellationToken.None);
+    await _client.PostAsJsonAsync("api/v1/auth/create-user", request, cts.Token);
 
     await _dispatcher.Received(1).SendAsync(
       Arg.Is<CreateUserCommand>(c =>
@@ -158,25 +166,27 @@ public sealed class AuthenticationEndpointsTests : IAsyncLifetime
   [Fact]
   public async Task RefreshToken_WhenTokenIsValid_ReturnsOkWithTokens()
   {
+    using CancellationTokenSource cts = new();
     RefreshTokenRequestDto request = new("valid-refresh-token");
     LoginResponseDto expected = new("new-access-token", "new-refresh-token", "Bearer", 3600);
     _dispatcher.SendAsync(Arg.Any<RefreshTokenCommand>(), Arg.Any<CancellationToken>()).Returns(expected);
 
-    HttpResponseMessage response = await _client.PostAsJsonAsync("api/v1/auth/refresh-token", request, CancellationToken.None);
+    HttpResponseMessage response = await _client.PostAsJsonAsync("api/v1/auth/refresh-token", request, cts.Token);
 
     Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-    LoginResponseDto? body = await response.Content.ReadFromJsonAsync<LoginResponseDto>(CancellationToken.None);
+    LoginResponseDto? body = await response.Content.ReadFromJsonAsync<LoginResponseDto>(cts.Token);
     Assert.Equal(expected, body);
   }
 
   [Fact]
   public async Task RefreshToken_WhenTokenIsInvalid_ReturnsUnauthorized()
   {
+    using CancellationTokenSource cts = new();
     RefreshTokenRequestDto request = new("expired-or-unknown-token");
     LoginResponseDto empty = new(string.Empty, string.Empty, string.Empty, 0);
     _dispatcher.SendAsync(Arg.Any<RefreshTokenCommand>(), Arg.Any<CancellationToken>()).Returns(empty);
 
-    HttpResponseMessage response = await _client.PostAsJsonAsync("api/v1/auth/refresh-token", request, CancellationToken.None);
+    HttpResponseMessage response = await _client.PostAsJsonAsync("api/v1/auth/refresh-token", request, cts.Token);
 
     Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     string body = await response.Content.ReadAsStringAsync();
@@ -186,11 +196,12 @@ public sealed class AuthenticationEndpointsTests : IAsyncLifetime
   [Fact]
   public async Task RefreshToken_ForwardsSubmittedTokenToDispatcher()
   {
+    using CancellationTokenSource cts = new();
     RefreshTokenRequestDto request = new("some-raw-token");
     _dispatcher.SendAsync(Arg.Any<RefreshTokenCommand>(), Arg.Any<CancellationToken>())
       .Returns(new LoginResponseDto("token", "refresh", "Bearer", 60));
 
-    await _client.PostAsJsonAsync("api/v1/auth/refresh-token", request, CancellationToken.None);
+    await _client.PostAsJsonAsync("api/v1/auth/refresh-token", request, cts.Token);
 
     await _dispatcher.Received(1).SendAsync(
       Arg.Is<RefreshTokenCommand>(c => c.Request.RefreshToken.Equals(request.RefreshToken)),
@@ -211,6 +222,7 @@ public sealed class AuthenticationEndpointsTests : IAsyncLifetime
   [Fact]
   public async Task GetCompanyUsers_WhenCompanyIdIsPositive_ReturnsOkWithUsers()
   {
+    using CancellationTokenSource cts = new();
     List<UserResponseDto> expected =
     [
       new UserResponseDto(1, "user1@test.com", true, DateTime.UtcNow, ["Admin"])
@@ -220,7 +232,7 @@ public sealed class AuthenticationEndpointsTests : IAsyncLifetime
     HttpResponseMessage response = await _client.GetAsync("api/v1/auth/get-company-users?companyId=5");
 
     Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-    List<UserResponseDto>? body = await response.Content.ReadFromJsonAsync<List<UserResponseDto>>(CancellationToken.None);
+    List<UserResponseDto>? body = await response.Content.ReadFromJsonAsync<List<UserResponseDto>>(cts.Token);
     Assert.NotNull(body);
     Assert.Single(body);
     Assert.Equal("user1@test.com", body[0].Email);
@@ -233,12 +245,13 @@ public sealed class AuthenticationEndpointsTests : IAsyncLifetime
   [Fact]
   public async Task GetCompanyUsers_WhenNoUsersExist_ReturnsOkWithEmptyList()
   {
+    using CancellationTokenSource cts = new();
     _dispatcher.SendAsync(Arg.Any<GetUsersByCompanyQuery>(), Arg.Any<CancellationToken>()).Returns([]);
 
     HttpResponseMessage response = await _client.GetAsync("api/v1/auth/get-company-users?companyId=5");
 
     Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-    List<UserResponseDto>? body = await response.Content.ReadFromJsonAsync<List<UserResponseDto>>(CancellationToken.None);
+    List<UserResponseDto>? body = await response.Content.ReadFromJsonAsync<List<UserResponseDto>>(cts.Token);
     Assert.Empty(body!);
   }
 
@@ -283,10 +296,11 @@ public sealed class AuthenticationEndpointsTests : IAsyncLifetime
   [Fact]
   public async Task Logout_WhenDispatched_ReturnsNoContent()
   {
+    using CancellationTokenSource cts = new();
     RefreshTokenRequestDto request = new("some-refresh-token");
     _dispatcher.SendAsync(Arg.Any<LogoutCommand>(), Arg.Any<CancellationToken>()).Returns(true);
 
-    HttpResponseMessage response = await _client.PostAsJsonAsync("api/v1/auth/logout", request, CancellationToken.None);
+    HttpResponseMessage response = await _client.PostAsJsonAsync("api/v1/auth/logout", request, cts.Token);
 
     Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
   }
@@ -294,10 +308,11 @@ public sealed class AuthenticationEndpointsTests : IAsyncLifetime
   [Fact]
   public async Task Logout_ForwardsSubmittedTokenToDispatcher()
   {
+    using CancellationTokenSource cts = new();
     RefreshTokenRequestDto request = new("token-to-revoke");
     _dispatcher.SendAsync(Arg.Any<LogoutCommand>(), Arg.Any<CancellationToken>()).Returns(true);
 
-    await _client.PostAsJsonAsync("api/v1/auth/logout", request, CancellationToken.None);
+    await _client.PostAsJsonAsync("api/v1/auth/logout", request, cts.Token);
 
     await _dispatcher.Received(1).SendAsync(
       Arg.Is<LogoutCommand>(c => c.Request.RefreshToken.Equals(request.RefreshToken)),
@@ -318,6 +333,7 @@ public sealed class AuthenticationEndpointsTests : IAsyncLifetime
   [Fact]
   public async Task GetUser_WhenFound_ReturnsOkWithUser()
   {
+    using CancellationTokenSource cts = new();
     DateTime createdAt = new(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
     UserResponseDto expected = new(9, "found@test.com", true, createdAt, ["Admin"]);
     _dispatcher.SendAsync(Arg.Any<GetUserByIdQuery>(), Arg.Any<CancellationToken>()).Returns(expected);
@@ -325,7 +341,7 @@ public sealed class AuthenticationEndpointsTests : IAsyncLifetime
     HttpResponseMessage response = await _client.GetAsync("api/v1/auth/get-user?companyId=5&userId=9");
 
     Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-    UserResponseDto? body = await response.Content.ReadFromJsonAsync<UserResponseDto>(CancellationToken.None);
+    UserResponseDto? body = await response.Content.ReadFromJsonAsync<UserResponseDto>(cts.Token);
     Assert.NotNull(body);
     Assert.Equal(expected.Id, body.Id);
     Assert.Equal(expected.Email, body.Email);

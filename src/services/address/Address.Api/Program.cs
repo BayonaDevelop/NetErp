@@ -49,3 +49,5 @@ app.MapHealthChecks("/health").AllowAnonymous();
 app.MapEndpointsFromAssembly(typeof(Program).Assembly);
 
 await app.RunAsync(CancellationToken.None).ConfigureAwait(false);
+
+public partial class Program { }

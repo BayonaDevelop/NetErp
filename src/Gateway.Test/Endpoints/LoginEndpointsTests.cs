@@ -27,6 +27,7 @@ public sealed class LoginEndpointsTests : IAsyncLifetime
 
   public async Task InitializeAsync()
   {
+    using CancellationTokenSource cts = new();
     WebApplicationBuilder builder = WebApplication.CreateBuilder();
     builder.WebHost.UseTestServer();
     builder.Logging.ClearProviders();
@@ -40,14 +41,15 @@ public sealed class LoginEndpointsTests : IAsyncLifetime
     _app = builder.Build();
     LoginEndpoints.MapEndpoints(_app);
 
-    await _app.StartAsync(CancellationToken.None).ConfigureAwait(false);
+    await _app.StartAsync(cts.Token).ConfigureAwait(false);
     _client = _app.GetTestClient();
   }
 
   public async Task DisposeAsync()
   {
+    using CancellationTokenSource cts = new();
     _client.Dispose();
-    await _app.StopAsync(CancellationToken.None).ConfigureAwait(false);
+    await _app.StopAsync(cts.Token).ConfigureAwait(false);
     await _app.DisposeAsync().ConfigureAwait(false);
   }
 

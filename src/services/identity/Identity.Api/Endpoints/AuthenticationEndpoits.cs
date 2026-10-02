@@ -33,7 +33,7 @@ public class AuthenticationEndpoits : IEndpoint
       {
         string? ip = http.Connection.RemoteIpAddress?.ToString();
 
-        return dispatcher
+        return await dispatcher
           .SendAsync(new CreateUserCommand(request, ip!), cancellationToken)
           .ConfigureAwait(false);
 

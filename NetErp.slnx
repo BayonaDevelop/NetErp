@@ -10,6 +10,7 @@
     <Project Path="src/services/address/Address.Application/Address.Application.csproj" />
     <Project Path="src/services/address/Address.Core/Address.Core.csproj" />
     <Project Path="src/services/address/Address.Infrastructure/Address.Infrastructure.csproj" />
+    <Project Path="src/services/address/Address.Test/Address.Test.csproj" />
   </Folder>
   <Folder Name="/src/services/identity/">
     <Project Path="src/services/identity/Identity.Api/Identity.Api.csproj" Id="975b37a6-185a-44c9-8b22-da210d12995a" />

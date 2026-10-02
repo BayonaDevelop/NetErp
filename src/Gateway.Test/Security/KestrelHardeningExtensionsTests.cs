@@ -60,7 +60,8 @@ public sealed class KestrelHardeningExtensionsTests
   [Fact]
   public async Task UseKestrelHardening_WhenEnvironmentIsDevelopment_DoesNotAddHstsHeader()
   {
-    (WebApplication app, HttpClient client) = await CreateAppAsync(Environments.Development, CancellationToken.None);
+    using CancellationTokenSource cts = new();
+    (WebApplication app, HttpClient client) = await CreateAppAsync(Environments.Development, cts.Token);
     await using (app)
     {
       HttpResponseMessage response = await client.GetAsync("/");
@@ -72,7 +73,8 @@ public sealed class KestrelHardeningExtensionsTests
   [Fact]
   public async Task UseKestrelHardening_WhenEnvironmentIsProduction_AddsHstsHeader()
   {
-    (WebApplication app, HttpClient client) = await CreateAppAsync(Environments.Production, CancellationToken.None);
+    using CancellationTokenSource cts = new();
+    (WebApplication app, HttpClient client) = await CreateAppAsync(Environments.Production, cts.Token);
     await using (app)
     {
       HttpResponseMessage response = await client.GetAsync("/");
